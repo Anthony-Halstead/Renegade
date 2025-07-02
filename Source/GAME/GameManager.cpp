@@ -169,7 +169,7 @@ namespace GAME
 	void UpdateEnemies(entt::registry& registry, entt::entity& entity)
 	{
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		entt::basic_view enemies = registry.view<Enemy, Health, SpawnEnemies>();		
+		entt::basic_view enemies = registry.view<Enemy_Boss, Health, SpawnEnemies>();		
 
 		for (auto ent : enemies)
 		{
@@ -178,6 +178,8 @@ namespace GAME
 			// timer currently used to test spawning new enemies
 			auto& spawn = registry.get<SpawnEnemies>(ent);
 			spawn.spawnTimer -= (float)deltaTime;
+
+			entt::entity enemySpawn{};
 
 			if (spawn.spawnTimer <= 0.0f)
 			{
@@ -204,23 +206,31 @@ namespace GAME
 
 					for (unsigned i = 0; i < shatterAmount && currentEnemyCount < maxEnemies; ++i)
 					{
-						entt::entity enemy = registry.create();
+						entt::entity enemySpawn = registry.create();
 
-						registry.emplace<GAME::Enemy>(enemy);
-						registry.emplace<GAME::Health>(enemy, enemyHealth);
-						registry.emplace<GAME::Shatters>(enemy, enemyShatter);
-						registry.emplace<GAME::SpawnEnemies>(enemy, 2.0f);
+						registry.emplace<GAME::Enemy>(enemySpawn);
+						registry.emplace<GAME::Health>(enemySpawn, enemyHealth);
+						registry.emplace<GAME::Shatters>(enemySpawn, enemyShatter);
 
-						UTIL::CreateVelocity(registry, enemy, UTIL::GetRandomVelocityVector(), enemySpeed);
-						UTIL::CreateTransform(registry, enemy, transform);
-						UTIL::CreateDynamicObjects(registry, enemy, enemyModel);
+						UTIL::CreateVelocity(registry, enemySpawn, UTIL::GetRandomVelocityVector(), enemySpeed);
+						UTIL::CreateTransform(registry, enemySpawn, transform);
+						UTIL::CreateDynamicObjects(registry, enemySpawn, enemyModel);
 					}
 				}
-				//registry.emplace<Destroy>(ent);
+
+				// Tracks list of small enemies spawned from large boss
+				entt::basic_view lesserEnemies = registry.view<Enemy, Health, Shatters>();
+
+				for (auto ent : lesserEnemies)
+				{
+					Health hp = registry.get<Health>(ent);
+
+					if (hp.health <= 0) registry.emplace<Destroy>(ent);;
+				}
 			}
 		}
 
-		entt::basic_view enemiesLeft = registry.view<Enemy>();
+		entt::basic_view enemiesLeft = registry.view<Enemy_Boss>();
 
 		if (enemiesLeft.empty())
 		{

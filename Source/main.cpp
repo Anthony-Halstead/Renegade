@@ -127,7 +127,7 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::GameManager>(gameManager);
 	registry.emplace<GAME::Player>(player);
-	registry.emplace<GAME::Enemy>(enemy);
+	registry.emplace<GAME::Enemy_Boss>(enemy);
 
 	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 	std::string playerModel = (*config).at("Player").at("model").as<std::string>();

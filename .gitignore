@@ -2,3 +2,4 @@
 build/
 *.cso
 saved.ini
+/.vs

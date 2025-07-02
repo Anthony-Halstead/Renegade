@@ -168,13 +168,18 @@ namespace GAME
 
 	void UpdateEnemies(entt::registry& registry, entt::entity& entity)
 	{
-		entt::basic_view enemies = registry.view<Enemy, Health>();
+		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+		entt::basic_view enemies = registry.view<Enemy, Health, SpawnEnemies>();		
 
 		for (auto ent : enemies)
 		{
 			Health hp = registry.get<Health>(ent);
 
-			if (hp.health == 0)
+			// timer currently used to test spawning new enemies
+			auto& spawn = registry.get<SpawnEnemies>(ent);
+			spawn.spawnTimer -= (float)deltaTime;
+
+			if (spawn.spawnTimer <= 0.0f)
 			{
 				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 				unsigned enemyShatter = registry.get<Shatters>(ent).shatterCount - 1;
@@ -188,26 +193,30 @@ namespace GAME
 					unsigned enemyHealth = (*config).at("Enemy1").at("hitpoints").as<unsigned>();
 					unsigned shatterAmount = (*config).at("Enemy1").at("shatterAmount").as<unsigned>();
 
+					unsigned maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned>();
+					unsigned currentEnemyCount = static_cast<unsigned>(registry.view<Enemy>().size());
+
 					GW::MATH::GMATRIXF transform = registry.get<Transform>(ent).matrix;
 					GW::MATH::GVECTORF vec = { 1, 1, 1, 1 };
 
 					GW::MATH::GVector::ScaleF(vec, enemyShatterScale, vec);
 					GW::MATH::GMatrix::ScaleGlobalF(transform, vec, transform);
 
-					for (unsigned i = 0; i < shatterAmount; ++i)
+					for (unsigned i = 0; i < shatterAmount && currentEnemyCount < maxEnemies; ++i)
 					{
 						entt::entity enemy = registry.create();
 
 						registry.emplace<GAME::Enemy>(enemy);
 						registry.emplace<GAME::Health>(enemy, enemyHealth);
 						registry.emplace<GAME::Shatters>(enemy, enemyShatter);
+						registry.emplace<GAME::SpawnEnemies>(enemy, 2.0f);
 
 						UTIL::CreateVelocity(registry, enemy, UTIL::GetRandomVelocityVector(), enemySpeed);
 						UTIL::CreateTransform(registry, enemy, transform);
 						UTIL::CreateDynamicObjects(registry, enemy, enemyModel);
 					}
 				}
-				registry.emplace<Destroy>(ent);
+				//registry.emplace<Destroy>(ent);
 			}
 		}
 

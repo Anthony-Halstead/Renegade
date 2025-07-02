@@ -41,5 +41,9 @@ namespace GAME
 		float invulnPeriod;
 	};
 
+	struct SpawnEnemies {
+		float spawnTimer;
+	};
+
 }// namespace GAME
 #endif // !GAME_COMPONENTS_H_

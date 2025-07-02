@@ -154,8 +154,10 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Transform>(player, playerTransform);
+
 	registry.emplace<GAME::Health>(enemy, enemyHealth);
 	registry.emplace<GAME::Transform>(enemy, enemyTransform);
+	registry.emplace<GAME::SpawnEnemies>(enemy, 2.0f);
 	registry.emplace<GAME::Shatters>(enemy, enemyShatter);
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);

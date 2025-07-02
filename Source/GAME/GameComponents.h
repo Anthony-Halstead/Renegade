@@ -5,6 +5,7 @@ namespace GAME
 {
 	///*** Tags ***///
 	struct Player {};
+	struct Enemy_Boss {};
 	struct Enemy {};
 	struct Bullet {};
 	struct Collidable {};

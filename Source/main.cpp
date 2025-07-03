@@ -6,10 +6,13 @@
 #include "DRAW/DrawComponents.h"
 #include "GAME/GameComponents.h"
 #include "APP/Window.hpp"
-
+#include "AUDIO/AudioComponents.h"
+#include "AUDIO/AudioSystem.h"
 // Local routines for specific application behavior
+void AudioBehavior(entt::registry& registry);
 void GraphicsBehavior(entt::registry& registry);
 void GameplayBehavior(entt::registry& registry);
+void AudioBehavior(entt::registry& registry);
 void MainLoopBehavior(entt::registry& registry);
 
 // Architecture is based on components/entities pushing updates to other components/entities (via "patch" function)
@@ -33,6 +36,8 @@ int main()
 
 	GameplayBehavior(registry); // create entities and components for gameplay
 
+	AudioBehavior(registry); //Create audio manager
+
 	MainLoopBehavior(registry); // update windows and input
 
 	// clear all entities and components from the registry
@@ -41,6 +46,14 @@ int main()
 	registry.clear();
 
 	return 0; // now destructors will be called for all components
+}
+
+void AudioBehavior(entt::registry& registry)
+{
+	auto audioEnt = registry.create();
+	registry.emplace<AUDIO::AudioDevice>(audioEnt);
+
+	AUDIO::AudioSystem::Initialize(&registry, audioEnt);
 }
 
 // This function will be called by the main loop to update the graphics
@@ -167,6 +180,7 @@ void MainLoopBehavior(entt::registry& registry)
 		deltaTime = elapsed;
 
 		registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
+		registry.patch<AUDIO::MusicHandle>(registry.view<AUDIO::MusicHandle>().front());
 
 		closedCount = 0;
 		// find all Windows that are not closed and call "patch" to update them

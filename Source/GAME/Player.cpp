@@ -1,7 +1,7 @@
 #include "GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../CCL.h"
-
+#include "../AUDIO/AudioSystem.h"
 void Invulnerability(entt::registry& registry, entt::entity& entity, const float& deltaTime);
 void Shoot(entt::registry& registry, entt::entity& entity, const float& deltaTime, const float& fireRate);
 void Movement(entt::registry& registry, entt::entity& entity, const float& deltaTime, const float& speed);
@@ -79,6 +79,17 @@ void Shoot(entt::registry& registry, entt::entity& entity, const float& deltaTim
 
 			GAME::Firing& firing = registry.emplace<GAME::Firing>(entity);
 			firing.cooldown = fireRate;
+
+			if (registry.valid(bullet)) {
+				if (registry.all_of<GAME::Transform>(bullet)) {
+					// Create a 3D SFX instance that follows the bullet
+					const auto& bulletTransform = registry.get<GAME::Transform>(bullet).matrix;
+					GW::MATH::GVECTORF bulletPos = bulletTransform.row3;
+
+					AUDIO::AudioSystem::PlaySFX("menuClick", bulletPos);
+				}
+			}
+
 		}
 	}
 }

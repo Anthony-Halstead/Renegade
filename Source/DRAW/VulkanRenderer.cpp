@@ -182,8 +182,6 @@ namespace DRAW
 		win.GetClientWidth(windowWidth);
 		win.GetClientHeight(windowHeight);
 
-		unsigned int surfaceWidth = 0, surfaceHeight = 0;
-		vulkanRenderer.vlkSurface.GetSwapchainImage(surfaceWidth, surfaceHeight);
 
 		VkViewport viewport = CreateViewportFromWindowDimensions(windowWidth, windowHeight);
 

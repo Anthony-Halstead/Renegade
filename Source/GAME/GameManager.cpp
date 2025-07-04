@@ -226,11 +226,11 @@ namespace GAME
 
 					// Define the relative positions for each small enemy
 					std::vector<GW::MATH::GVECTORF> enemyOffsets = {
-						{ -15.0f, 0.0f, -30.0f, 1.0f },
-						{ -8.0f, 0.0f, -30.0f, 1.0f },
+						{ -15.0f, 0.0f, -26.0f, 1.0f },
+						{ -8.0f, 0.0f, -28.0f, 1.0f },
 						{ 0.0f, 0.0f, -30.0f, 1.0f },
-						{ 8.0f, 0.0f, -30.0f, 1.0f },
-						{ 15.0f, 0.0f, -30.0f, 1.0f }
+						{ 8.0f, 0.0f, -28.0f, 1.0f },
+						{ 15.0f, 0.0f, -26.0f, 1.0f }
 					};
 
 					for (unsigned i = 0; i < maxEnemies && currentEnemyCount < maxEnemies; ++i, ++currentEnemyCount)

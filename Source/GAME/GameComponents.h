@@ -7,7 +7,7 @@ namespace GAME
 	struct Player {};
 	struct Enemy_Boss {};
 	struct Enemy {};
-	struct Bullet {};
+	struct Bullet { float lifetime = 25.0f; };
 	struct Collidable {};
 	struct Obstacle {};
 	struct Destroy {};

@@ -135,21 +135,19 @@ void GraphicsBehavior(entt::registry& registry)
 void GameplayBehavior(entt::registry& registry)
 {
 	entt::entity player = registry.create();
-	entt::entity enemy = registry.create();
+	entt::entity enemyBoss = registry.create();
 	entt::entity gameManager = registry.create();
 
 	registry.emplace<GAME::GameManager>(gameManager);
 	registry.emplace<GAME::Player>(player);
-	registry.emplace<GAME::Enemy_Boss>(enemy);
+	registry.emplace<GAME::Enemy_Boss>(enemyBoss);
 
 	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 	std::string playerModel = (*config).at("Player").at("model").as<std::string>();
-	std::string enemyModel = (*config).at("Enemy1").at("model").as<std::string>();
+	std::string enemyBossModel = (*config).at("EnemyBoss").at("model").as<std::string>();
 
 	unsigned playerHealth = (*config).at("Player").at("hitpoints").as<unsigned>();
-	unsigned enemyHealth = (*config).at("Enemy1").at("hitpoints").as<unsigned>();
-	unsigned enemyShatter = (*config).at("Enemy1").at("initialShatterCount").as<unsigned>();
-	float enemySpeed = (*config).at("Enemy1").at("speed").as<float>();
+	unsigned bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned>();
 
 	// Move enemy to top of the screen to prepare for ship model
 	GAME::Transform playerTransform{};
@@ -168,14 +166,12 @@ void GameplayBehavior(entt::registry& registry)
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Transform>(player, playerTransform);
 
-	registry.emplace<GAME::Health>(enemy, enemyHealth);
-	registry.emplace<GAME::Transform>(enemy, enemyTransform);
-	registry.emplace<GAME::SpawnEnemies>(enemy, 2.0f);
-	registry.emplace<GAME::Shatters>(enemy, enemyShatter);
+	registry.emplace<GAME::Health>(enemyBoss, bossHealth);
+	registry.emplace<GAME::Transform>(enemyBoss, enemyTransform);
+	registry.emplace<GAME::SpawnEnemies>(enemyBoss, 2.0f);
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
-	//UTIL::CreateVelocity(registry, enemy, UTIL::GetRandomVelocityVector(), enemySpeed);
-	UTIL::CreateDynamicObjects(registry, enemy, enemyModel);
+	UTIL::CreateDynamicObjects(registry, enemyBoss, enemyBossModel);
 }
 
 // This function will be called by the main loop to update the main loop

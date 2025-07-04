@@ -140,6 +140,14 @@ namespace GAME
 					{
 						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy>(otherEnt) && !registry.any_of<Hit>(otherEnt))
 						{
+							// Prevent self-hit
+							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+								if (owner->owner == otherEnt) {
+									// This bullet belongs to this enemy, skip
+									continue;
+								}
+							}
+
 							--registry.get<Health>(otherEnt).health;
 							registry.emplace<Hit>(otherEnt);
 							registry.emplace_or_replace<Destroy>(ent);
@@ -189,22 +197,24 @@ namespace GAME
 				if (enemyShatter)
 				{
 					std::string enemyModel = (*config).at("Enemy1").at("model").as<std::string>();
-
-					float enemySpeed = (*config).at("Enemy1").at("speed").as<float>();
-					float enemyShatterScale = (*config).at("Enemy1").at("shatterScale").as<float>();
 					unsigned enemyHealth = (*config).at("Enemy1").at("hitpoints").as<unsigned>();
-					unsigned shatterAmount = (*config).at("Enemy1").at("shatterAmount").as<unsigned>();
-
 					unsigned maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned>();
 					unsigned currentEnemyCount = static_cast<unsigned>(registry.view<Enemy>().size());
 
-					GW::MATH::GMATRIXF transform = registry.get<Transform>(ent).matrix;
-					GW::MATH::GVECTORF vec = { 1, 1, 1, 1 };
+					// Get the boss's position
+					auto& bossTransform = registry.get<Transform>(ent);
+					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 
-					GW::MATH::GVector::ScaleF(vec, enemyShatterScale, vec);
-					GW::MATH::GMatrix::ScaleGlobalF(transform, vec, transform);
+					// Define the relative positions for each small enemy
+					std::vector<GW::MATH::GVECTORF> enemyOffsets = {
+						{ -15.0f, 0.0f, -8.0f, 1.0f },
+						{ -8.0f, 0.0f, -12.0f, 1.0f },
+						{ 0.0f, 0.0f, -16.0f, 1.0f },
+						{  8.0f, 0.0f, -12.0f, 1.0f },
+						{  15.0f, 0.0f, -8.0f, 1.0f }
+					};
 
-					for (unsigned i = 0; i < shatterAmount && currentEnemyCount < maxEnemies; ++i)
+					for (unsigned i = 0; i < maxEnemies && currentEnemyCount < maxEnemies; ++i, ++currentEnemyCount)
 					{
 						entt::entity enemySpawn = registry.create();
 
@@ -212,8 +222,23 @@ namespace GAME
 						registry.emplace<GAME::Health>(enemySpawn, enemyHealth);
 						registry.emplace<GAME::Shatters>(enemySpawn, enemyShatter);
 
-						UTIL::CreateVelocity(registry, enemySpawn, UTIL::GetRandomVelocityVector(), enemySpeed);
-						UTIL::CreateTransform(registry, enemySpawn, transform);
+						// Set enemy state to Moving
+						registry.emplace<GAME::EnemyState>(enemySpawn, GAME::EnemyState{ GAME::EnemyState::State::Moving });
+						// Debug log to show moving state
+						std::cout << "Enemy " << currentEnemyCount << " spawned with state Moving." << std::endl;
+
+						// Set initial position at the boss
+						GW::MATH::GMATRIXF enemyMatrix = bossTransform.matrix;
+						registry.emplace<GAME::Transform>(enemySpawn, enemyMatrix);
+
+						// Calculate and set the target position
+						GW::MATH::GVECTORF targetPos;
+						GW::MATH::GVector::AddVectorF(bossPos, enemyOffsets[i], targetPos);
+						registry.emplace<GAME::TargetPosition>(enemySpawn, targetPos);
+
+						// Give a velocity component (start at zero)
+						registry.emplace<GAME::Velocity>(enemySpawn, GW::MATH::GVECTORF{ 0,0,0,0 });
+
 						UTIL::CreateDynamicObjects(registry, enemySpawn, enemyModel);
 					}
 				}
@@ -257,6 +282,94 @@ namespace GAME
 		}
 	}
 
+	void UpdateEnemyMovement(entt::registry& registry)
+	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+
+		auto view = registry.view<Enemy, Transform, TargetPosition, Velocity>();
+		for (auto ent : view)
+		{
+			auto& transform = registry.get<Transform>(ent);
+			auto& target = registry.get<TargetPosition>(ent);
+			auto& velocity = registry.get<Velocity>(ent);
+
+			GW::MATH::GVECTORF& pos = transform.matrix.row4;
+			GW::MATH::GVECTORF dir;
+			GW::MATH::GVector::SubtractVectorF(target.position, pos, dir);
+
+			float distance;
+			GW::MATH::GVector::MagnitudeF(dir, distance);
+
+			if (distance <= 1.0f) {
+				// Arrived: stop movement
+				velocity.vec = { 0, 0, 0, 0 };
+				registry.remove<TargetPosition>(ent); // Remove to stop further updates
+
+				// Set enemy state to Ready
+				if (auto* state = registry.try_get<EnemyState>(ent)) {
+					state->state = EnemyState::State::Ready;
+					// Debug log to show ready state
+					std::cout << "Enemy " << static_cast<uint32_t>(ent) << " reached target and is now Ready." << std::endl;
+				}
+			}
+			else {
+				// Move toward target (normalize direction and set speed)
+				GW::MATH::GVector::NormalizeF(dir, dir);
+				float speed = (*config).at("Enemy1").at("speed").as<float>();
+				velocity.vec = { dir.x * speed, dir.y * speed, dir.z * speed, 0 };
+			}
+		}
+	}
+
+	void UpdateEnemyAttack(entt::registry& registry)
+	{
+		auto view = registry.view<Enemy, EnemyState>();
+		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+
+		for (auto ent : view)
+		{
+			auto& state = registry.get<EnemyState>(ent);
+			if (state.state == EnemyState::State::Ready || state.state == EnemyState::State::Attacking)
+			{
+				auto& enemyStats = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Enemy1");
+				float fireRate = enemyStats.at("firerate").as<float>();
+
+				GAME::Firing* isFiring = registry.try_get<GAME::Firing>(ent);
+
+				if (isFiring != nullptr)
+				{
+					isFiring->cooldown -= deltaTime;
+					if (isFiring->cooldown <= 0.0f)
+					{
+						// Fire logic here, e.g., create a bullet entity
+						entt::entity bullet = registry.create();
+						registry.emplace<GAME::Bullet>(bullet);
+						registry.emplace<GAME::BulletOwner>(bullet, ent); // Set owner of the bullet
+						std::string bulletModel = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("model").as<std::string>();
+						float bulletSpeed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("speed").as<float>();
+						GW::MATH::GVECTORF velocity = { 0, 0, -bulletSpeed, 0 }; // Example direction
+						UTIL::CreateVelocity(registry, bullet, velocity, bulletSpeed);
+						UTIL::CreateTransform(registry, bullet, registry.get<Transform>(ent).matrix);
+						UTIL::CreateDynamicObjects(registry, bullet, bulletModel);
+						isFiring->cooldown = fireRate; // Reset cooldown
+
+						// Set state to Attacking after first bullet
+						state.state = EnemyState::State::Attacking;
+						std::cout << "Enemy " << static_cast<uint32_t>(ent) << " is now Attacking." << std::endl;
+					}
+				}
+				else
+				{
+					// Start firing
+					registry.emplace<GAME::Firing>(ent, fireRate);
+				}
+			}
+		}
+	}
+
+
+
+
 	void UpdateDestroy(entt::registry& registry)
 	{
 		entt::basic_view destroy = registry.view<Destroy>();
@@ -267,10 +380,12 @@ namespace GAME
 	{
 		if (!registry.any_of<GameOver>(entity))
 		{
+			UpdateEnemyMovement(registry);
 			UpdatePosition(registry);
 			UpdateCollide(registry);
 			UpdateHit(registry);
 			UpdateEnemies(registry, entity);
+			UpdateEnemyAttack(registry);
 			UpdatePlayers(registry, entity);
 			UpdateDestroy(registry);
 		}

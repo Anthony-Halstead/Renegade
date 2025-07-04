@@ -15,6 +15,7 @@ namespace GAME
 
 	///*** Components ***///
 	struct GameManager {};
+	struct StateManager {};
 	
 	struct Transform {
 		GW::MATH::GMATRIXF matrix;
@@ -38,6 +39,10 @@ namespace GAME
 
 	struct Invulnerability {
 		float invulnPeriod;
+	};
+
+	struct Score {
+		unsigned score;
 	};
 
 }// namespace GAME

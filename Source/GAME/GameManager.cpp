@@ -138,19 +138,24 @@ namespace GAME
 
 					// Bullets hit enemy
 					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy>(otherEnt) && !registry.any_of<Hit>(otherEnt))
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) && !registry.any_of<Hit>(otherEnt))
 						{
-							// Prevent self-hit
-							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt) {
-									// This bullet belongs to this enemy, skip
-									continue;
-								}
-							}
+							//// Prevent self-hit
+							//if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+							//	if (owner->owner == otherEnt) {
+							//		// This bullet belongs to this enemy, skip
+							//		continue;
+							//	}
+							//}
+
+							// Show current health of enemy boss
+							std::cout << "Enemy Boss current health: " << registry.get<Health>(otherEnt).health << std::endl;
 
 							--registry.get<Health>(otherEnt).health;
 							registry.emplace<Hit>(otherEnt);
 							registry.emplace_or_replace<Destroy>(ent);
+
+							std::cout << "Enemy Boss hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
 						}
 					}
 
@@ -161,6 +166,20 @@ namespace GAME
 							--registry.get<Health>(ent).health;
 							registry.emplace<Invulnerability>(ent, (*registry.ctx().get<UTIL::Config>().gameConfig).at("Player").at("invulnPeriod").as<float>());
 							std::cout << "Player's current health: " << registry.get<Health>(ent).health << std::endl;
+						}
+					}
+				}
+				else
+				{
+					// Destroy bullet after 5 seconds
+					if (registry.any_of<Bullet>(ent) && !registry.any_of<Destroy>(ent))
+					{
+						auto& bullet = registry.get<Bullet>(ent);
+						bullet.lifetime -= registry.ctx().get<UTIL::DeltaTime>().dtSec;
+						if (bullet.lifetime <= 0.0f)
+						{
+							registry.emplace<Destroy>(ent);
+							std::cout << "Bullet destroyed after lifetime expired." << std::endl;
 						}
 					}
 				}
@@ -192,9 +211,9 @@ namespace GAME
 			if (spawn.spawnTimer <= 0.0f)
 			{
 				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-				unsigned enemyShatter = registry.get<Shatters>(ent).shatterCount - 1;
+				unsigned bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned>();
 
-				if (enemyShatter)
+				if (bossHealth)
 				{
 					std::string enemyModel = (*config).at("Enemy1").at("model").as<std::string>();
 					unsigned enemyHealth = (*config).at("Enemy1").at("hitpoints").as<unsigned>();
@@ -207,11 +226,11 @@ namespace GAME
 
 					// Define the relative positions for each small enemy
 					std::vector<GW::MATH::GVECTORF> enemyOffsets = {
-						{ -15.0f, 0.0f, -8.0f, 1.0f },
-						{ -8.0f, 0.0f, -12.0f, 1.0f },
-						{ 0.0f, 0.0f, -16.0f, 1.0f },
-						{  8.0f, 0.0f, -12.0f, 1.0f },
-						{  15.0f, 0.0f, -8.0f, 1.0f }
+						{ -15.0f, 0.0f, -26.0f, 1.0f },
+						{ -8.0f, 0.0f, -28.0f, 1.0f },
+						{ 0.0f, 0.0f, -30.0f, 1.0f },
+						{ 8.0f, 0.0f, -28.0f, 1.0f },
+						{ 15.0f, 0.0f, -26.0f, 1.0f }
 					};
 
 					for (unsigned i = 0; i < maxEnemies && currentEnemyCount < maxEnemies; ++i, ++currentEnemyCount)
@@ -220,7 +239,6 @@ namespace GAME
 
 						registry.emplace<GAME::Enemy>(enemySpawn);
 						registry.emplace<GAME::Health>(enemySpawn, enemyHealth);
-						registry.emplace<GAME::Shatters>(enemySpawn, enemyShatter);
 
 						// Set enemy state to Moving
 						registry.emplace<GAME::EnemyState>(enemySpawn, GAME::EnemyState{ GAME::EnemyState::State::Moving });
@@ -240,17 +258,32 @@ namespace GAME
 						registry.emplace<GAME::Velocity>(enemySpawn, GW::MATH::GVECTORF{ 0,0,0,0 });
 
 						UTIL::CreateDynamicObjects(registry, enemySpawn, enemyModel);
+						std::cout << "Spawned enemy at: "
+							<< enemyMatrix.row4.x << ", "
+							<< enemyMatrix.row4.y << ", "
+							<< enemyMatrix.row4.z << " | Health: "
+							<< enemyHealth << std::endl;
+
 					}
 				}
 
+				// Check if the boss health is zero or less
+				if (hp.health <= 0)
+				{
+					registry.emplace<Destroy>(ent);
+					registry.remove<SpawnEnemies>(ent);
+					registry.remove<Enemy_Boss>(ent);
+					std::cout << "Enemy Boss defeated!" << std::endl;
+				}
+
 				// Tracks list of small enemies spawned from large boss
-				entt::basic_view lesserEnemies = registry.view<Enemy, Health, Shatters>();
+				entt::basic_view lesserEnemies = registry.view<Enemy, Health>();
 
 				for (auto ent : lesserEnemies)
 				{
 					Health hp = registry.get<Health>(ent);
 
-					if (hp.health <= 0) registry.emplace<Destroy>(ent);;
+					if (hp.health <= 0) registry.emplace<Destroy>(ent);
 				}
 			}
 		}
@@ -366,9 +399,6 @@ namespace GAME
 			}
 		}
 	}
-
-
-
 
 	void UpdateDestroy(entt::registry& registry)
 	{

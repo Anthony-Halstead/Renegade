@@ -5,6 +5,7 @@ namespace GAME
 {
 	///*** Tags ***///
 	struct Player {};
+	struct Enemy_Boss {};
 	struct Enemy {};
 	struct Bullet {};
 	struct Collidable {};
@@ -20,8 +21,24 @@ namespace GAME
 		GW::MATH::GMATRIXF matrix;
 	};
 
+	struct TargetPosition {
+		GW::MATH::GVECTORF position;
+	};
+
+	struct EnemyState {
+		enum class State {
+			Moving,
+			Ready,
+			Attacking
+		} state;
+	};
+
 	struct Firing {
 		float cooldown;
+	};
+
+	struct BulletOwner {
+		entt::entity owner;
 	};
 
 	struct Velocity {
@@ -38,6 +55,10 @@ namespace GAME
 
 	struct Invulnerability {
 		float invulnPeriod;
+	};
+
+	struct SpawnEnemies {
+		float spawnTimer;
 	};
 
 }// namespace GAME

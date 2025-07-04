@@ -140,7 +140,7 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::GameManager>(gameManager);
 	registry.emplace<GAME::Player>(player);
-	registry.emplace<GAME::Enemy>(enemy);
+	registry.emplace<GAME::Enemy_Boss>(enemy);
 
 	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 	std::string playerModel = (*config).at("Player").at("model").as<std::string>();
@@ -151,12 +151,30 @@ void GameplayBehavior(entt::registry& registry)
 	unsigned enemyShatter = (*config).at("Enemy1").at("initialShatterCount").as<unsigned>();
 	float enemySpeed = (*config).at("Enemy1").at("speed").as<float>();
 
+	// Move enemy to top of the screen to prepare for ship model
+	GAME::Transform playerTransform{};
+	GAME::Transform enemyTransform{};
+
+	GW::MATH::GMATRIXF identity;
+	GW::MATH::GMatrix::IdentityF(identity);
+
+	enemyTransform.matrix = identity;
+	enemyTransform.matrix.row4.z = 20.0f;
+
+	// Put player below enemy to start
+	playerTransform.matrix = identity;
+	playerTransform.matrix.row4.z = -20.0f;	
+
 	registry.emplace<GAME::Health>(player, playerHealth);
+	registry.emplace<GAME::Transform>(player, playerTransform);
+
 	registry.emplace<GAME::Health>(enemy, enemyHealth);
+	registry.emplace<GAME::Transform>(enemy, enemyTransform);
+	registry.emplace<GAME::SpawnEnemies>(enemy, 2.0f);
 	registry.emplace<GAME::Shatters>(enemy, enemyShatter);
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
-	UTIL::CreateVelocity(registry, enemy, UTIL::GetRandomVelocityVector(), enemySpeed);
+	//UTIL::CreateVelocity(registry, enemy, UTIL::GetRandomVelocityVector(), enemySpeed);
 	UTIL::CreateDynamicObjects(registry, enemy, enemyModel);
 }
 

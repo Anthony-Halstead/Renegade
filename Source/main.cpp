@@ -9,7 +9,7 @@
 #include "AUDIO/AudioComponents.h"
 #include "AUDIO/AudioSystem.h"
 // Local routines for specific application behavior
-void AudioBehavior(entt::registry& registry);
+
 void GraphicsBehavior(entt::registry& registry);
 void GameplayBehavior(entt::registry& registry);
 void AudioBehavior(entt::registry& registry);

@@ -11,7 +11,6 @@ set(PRE_COMPILED
 # Explicitly specify critical files first to guarantee correct static initialization order
 set(EXPLICIT_SOURCES
     ./Source/CCL.cpp
-    ./Source/Audio/AudioManager.cpp
 )
 
 # Glob all remaining source files
@@ -29,7 +28,6 @@ file(GLOB_RECURSE OTHER_SOURCE_FILES CONFIGURE_DEPENDS
 # Remove explicitly listed files to prevent duplicates
 list(REMOVE_ITEM OTHER_SOURCE_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/Source/CCL.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Source/Audio/AudioManager.cpp"
 )
 
 # Now, explicitly add the critical files first, followed by the rest

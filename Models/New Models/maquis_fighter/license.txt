@@ -1,0 +1,11 @@
+Model Information:
+* title:	Maquis Fighter
+* source:	https://sketchfab.com/3d-models/maquis-fighter-3a56f5d6159e4362a2c92283a22a1871
+* author:	Hangar.b.productions (https://sketchfab.com/hangar.b.productions)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Maquis Fighter" (https://sketchfab.com/3d-models/maquis-fighter-3a56f5d6159e4362a2c92283a22a1871) by Hangar.b.productions (https://sketchfab.com/hangar.b.productions) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

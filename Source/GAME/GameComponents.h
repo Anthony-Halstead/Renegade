@@ -43,6 +43,7 @@ namespace GAME
 
 	struct Score {
 		unsigned score;
+		unsigned highScore;
 	};
 
 }// namespace GAME

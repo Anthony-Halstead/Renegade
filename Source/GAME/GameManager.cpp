@@ -7,6 +7,21 @@ namespace GAME
 {
 	// Helper functions
 
+	void WakeScoreManager(entt::registry& registry, const std::string name, const std::string loc)
+	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::basic_view scoreManager = registry.view<Score>();
+		for (auto scoreEnt : scoreManager)
+		{
+			auto& score = registry.get<Score>(scoreEnt);
+			/// THIS IS A WHOLE MAJOR PUSH BEHIND ///
+			/* TODO: update config before running */
+			score.score += (*config).at(name).at(loc).as<unsigned>();
+			if (score.score > score.highScore) score.highScore = score.score;
+		}
+	}
+
 	void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
 	{
 		GW::MATH::GQUATERNIONF rotation;
@@ -178,6 +193,8 @@ namespace GAME
 			{
 				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 				unsigned enemyShatter = registry.get<Shatters>(ent).shatterCount - 1;
+
+				WakeScoreManager(registry, "Enemy1", "score");
 
 				if (enemyShatter)
 				{

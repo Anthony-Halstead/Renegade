@@ -137,8 +137,10 @@ void GameplayBehavior(entt::registry& registry)
 	entt::entity player = registry.create();
 	entt::entity enemy = registry.create();
 	entt::entity gameManager = registry.create();
+	entt::entity stateManager = registry.create();
 
 	registry.emplace<GAME::GameManager>(gameManager);
+	registry.emplace<GAME::StateManager>(stateManager);
 	registry.emplace<GAME::Player>(player);
 	registry.emplace<GAME::Enemy>(enemy);
 
@@ -154,6 +156,7 @@ void GameplayBehavior(entt::registry& registry)
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Health>(enemy, enemyHealth);
 	registry.emplace<GAME::Shatters>(enemy, enemyShatter);
+	registry.emplace<GAME::Score>(stateManager, 0);
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
 	UTIL::CreateVelocity(registry, enemy, UTIL::GetRandomVelocityVector(), enemySpeed);

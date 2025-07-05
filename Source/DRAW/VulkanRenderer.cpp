@@ -65,6 +65,35 @@ namespace DRAW
 		vkCreateDescriptorSetLayout(vulkanRenderer.device, &setCreateInfo, nullptr, &vulkanRenderer.descriptorLayout);
 #pragma endregion
 
+#pragma region Texture Descriptor Layout
+
+		VkDescriptorBindingFlagsEXT descriptorBindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT;
+
+		VkDescriptorSetLayoutBindingFlagsCreateInfoEXT descriptorSetLayoutBindingFlagsCreateInfo = {};
+		descriptorSetLayoutBindingFlagsCreateInfo.bindingCount = 1;
+		descriptorSetLayoutBindingFlagsCreateInfo.pBindingFlags = &descriptorBindingFlags;
+		descriptorSetLayoutBindingFlagsCreateInfo.pNext = nullptr;
+		descriptorSetLayoutBindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+
+		VkDescriptorSetLayoutBinding textureDescriptorSetLayoutBinding = {};
+
+		textureDescriptorSetLayoutBinding.binding = 0;
+		textureDescriptorSetLayoutBinding.descriptorCount = vulkanRenderer.textures.size();
+		textureDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		textureDescriptorSetLayoutBinding.pImmutableSamplers = 0;
+		textureDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutCreateInfo textureSetCreateInfo = {};
+		textureSetCreateInfo.bindingCount = 1;
+		textureSetCreateInfo.flags = 0;
+		textureSetCreateInfo.pBindings = &textureDescriptorSetLayoutBinding;
+		textureSetCreateInfo.pNext = &descriptorSetLayoutBindingFlagsCreateInfo;
+		textureSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+		vkCreateDescriptorSetLayout(vulkanRenderer.device, &textureSetCreateInfo, nullptr, &vulkanRenderer.textureDescriptorLayout);
+
+#pragma endregion
+
 #pragma region Descriptor Pool
 		VkDescriptorPoolCreateInfo descriptorpool_create_info = {};
 		descriptorpool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -318,7 +347,7 @@ namespace DRAW
 		const char* debugLayers[] = {
 			"VK_LAYER_KHRONOS_validation", // standard validation layer
 		};
-		if (-vulkanRenderer.vlkSurface.Create(win, GW::GRAPHICS::DEPTH_BUFFER_SUPPORT,
+		if (-vulkanRenderer.vlkSurface.Create(win, GW::GRAPHICS::DEPTH_BUFFER_SUPPORT | GW::GRAPHICS::GGraphicsInitOptions::BINDLESS_SUPPORT,
 			sizeof(debugLayers) / sizeof(debugLayers[0]),
 			debugLayers, 0, nullptr, 0, nullptr, false))
 #else

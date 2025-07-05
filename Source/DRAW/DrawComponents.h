@@ -20,6 +20,14 @@ namespace DRAW
 		float farPlane;
 	};
 
+	struct TextureData
+	{
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkImage image;
+		VkImageView imageView;
+	};
+
 	struct VulkanRenderer
 	{
 		GW::GRAPHICS::GVulkanSurface vlkSurface;
@@ -32,9 +40,11 @@ namespace DRAW
 		VkPipelineLayout pipelineLayout = nullptr;
 		GW::MATH::GMATRIXF projMatrix;
 		VkDescriptorSetLayout descriptorLayout = nullptr;
+		VkDescriptorSetLayout textureDescriptorLayout = nullptr;
 		VkDescriptorPool descriptorPool = nullptr;
 		std::vector<VkDescriptorSet> descriptorSets;
 		VkClearValue clrAndDepth[2];
+		std::vector<DRAW::TextureData> textures;
 	};
 
 	struct VulkanVertexBuffer

@@ -80,7 +80,7 @@ void GraphicsBehavior(entt::registry& registry)
 		startY,
 		windowWidth,
 		windowHeight,
-		GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED, ""
+		GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED, "Renegade"
 		});
 
 

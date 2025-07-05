@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(PROJECT_NAME PPIV)
+set(PROJECT_NAME EssentialGreens)
 project(${PROJECT_NAME})
 
 # Precompiled headers for faster builds

@@ -29,12 +29,25 @@ namespace GAME
 		}
 	}
 
+	void MonitorPlayerHealth(entt::registry& registry, entt::entity entity)
+	{
+		entt::basic_view players = registry.view<Player, Health, PriorFrameData>();
+		for (auto ent : players)
+		{
+			if (registry.get<Health>(ent).health < registry.get<PriorFrameData>(ent).pHealth) {
+				// communicate to UI or other systems that player has been hit
+			}
+			// update prior frame data to reflect current frame
+			registry.get<PriorFrameData>(ent).pHealth = registry.get<Health>(ent).health;
+		}
+	}
+
 	// Update method
 	static void Update_GameState(entt::registry& registry, entt::entity entity) 
 	{
 		if (!registry.any_of<GameOver>(entity)) 
 		{
-
+			MonitorPlayerHealth(registry, entity);
 		}
 		else
 		{

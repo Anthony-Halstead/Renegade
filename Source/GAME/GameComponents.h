@@ -46,5 +46,9 @@ namespace GAME
 		unsigned highScore;
 	};
 
+	struct PriorFrameData {
+		unsigned pHealth;
+	};
+
 }// namespace GAME
 #endif // !GAME_COMPONENTS_H_

@@ -8,11 +8,13 @@
 #include "APP/Window.hpp"
 #include "AUDIO/AudioComponents.h"
 #include "AUDIO/AudioSystem.h"
+#include "AI/AIComponents.h"
 // Local routines for specific application behavior
 
 void GraphicsBehavior(entt::registry& registry);
 void GameplayBehavior(entt::registry& registry);
 void AudioBehavior(entt::registry& registry);
+void AIBehavior(entt::registry& registry);
 void MainLoopBehavior(entt::registry& registry);
 
 // Architecture is based on components/entities pushing updates to other components/entities (via "patch" function)
@@ -38,6 +40,8 @@ int main()
 
 	AudioBehavior(registry); //Create audio manager
 
+	AIBehavior(registry); //Create AI Director
+
 	MainLoopBehavior(registry); // update windows and input
 
 	// clear all entities and components from the registry
@@ -55,7 +59,11 @@ void AudioBehavior(entt::registry& registry)
 
 	AUDIO::AudioSystem::Initialize(&registry, audioEnt);
 }
-
+void AIBehavior(entt::registry& registry)
+{
+	auto e = registry.create();
+	registry.emplace<AI::AIDirector>(e);
+}
 // This function will be called by the main loop to update the graphics
 // It will be responsible for loading the Level, creating the VulkanRenderer, and all VulkanInstances
 void GraphicsBehavior(entt::registry& registry)
@@ -135,43 +143,29 @@ void GraphicsBehavior(entt::registry& registry)
 void GameplayBehavior(entt::registry& registry)
 {
 	entt::entity player = registry.create();
-	entt::entity enemyBoss = registry.create();
 	entt::entity gameManager = registry.create();
 
 	registry.emplace<GAME::GameManager>(gameManager);
 	registry.emplace<GAME::Player>(player);
-	registry.emplace<GAME::Enemy_Boss>(enemyBoss);
 
 	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 	std::string playerModel = (*config).at("Player").at("model").as<std::string>();
-	std::string enemyBossModel = (*config).at("EnemyBoss").at("model").as<std::string>();
-
 	unsigned playerHealth = (*config).at("Player").at("hitpoints").as<unsigned>();
-	unsigned bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned>();
 
 	// Move enemy to top of the screen to prepare for ship model
 	GAME::Transform playerTransform{};
-	GAME::Transform enemyTransform{};
 
 	GW::MATH::GMATRIXF identity;
 	GW::MATH::GMatrix::IdentityF(identity);
 
-	enemyTransform.matrix = identity;
-	enemyTransform.matrix.row4.z = 20.0f;
-
 	// Put player below enemy to start
 	playerTransform.matrix = identity;
-	playerTransform.matrix.row4.z = -20.0f;	
+	playerTransform.matrix.row4.z = -20.0f;
 
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Transform>(player, playerTransform);
 
-	registry.emplace<GAME::Health>(enemyBoss, bossHealth);
-	registry.emplace<GAME::Transform>(enemyBoss, enemyTransform);
-	registry.emplace<GAME::SpawnEnemies>(enemyBoss, 2.0f);
-
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
-	UTIL::CreateDynamicObjects(registry, enemyBoss, enemyBossModel);
 }
 
 // This function will be called by the main loop to update the main loop
@@ -194,6 +188,7 @@ void MainLoopBehavior(entt::registry& registry)
 		deltaTime = elapsed;
 
 		registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
+		registry.patch<AI::AIDirector>(registry.view<AI::AIDirector>().front());
 		registry.patch<AUDIO::MusicHandle>(registry.view<AUDIO::MusicHandle>().front());
 
 		closedCount = 0;

@@ -7,7 +7,9 @@ namespace GAME
 {
 	// Helper functions
 
-	void WakeScoreManager(entt::registry& registry, const std::string name, const std::string loc)
+	// This takes in a name and location to update the player score that exists in the game manager.
+	// It also checks whether this score is a new high score and replaces it if so.
+	void UpdateScoreManager(entt::registry& registry, const std::string name, const std::string loc)
 	{
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 
@@ -15,6 +17,7 @@ namespace GAME
 		for (auto scoreEnt : scoreManager)
 		{
 			auto& score = registry.get<Score>(scoreEnt);
+			/* ///      WARNING       /// */
 			/// THIS IS A WHOLE MAJOR PUSH BEHIND ///
 			/* TODO: update config before running */
 			score.score += (*config).at(name).at(loc).as<unsigned>();
@@ -194,7 +197,7 @@ namespace GAME
 				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 				unsigned enemyShatter = registry.get<Shatters>(ent).shatterCount - 1;
 
-				WakeScoreManager(registry, "Enemy1", "score");
+				UpdateScoreManager(registry, "Enemy1", "score");
 
 				if (enemyShatter)
 				{

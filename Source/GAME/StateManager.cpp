@@ -6,22 +6,36 @@ namespace GAME
 {
 	// Helper functions
 
+	// This updates the player score and checks if it is a new high score.
+	// If the score component does not exist, it creates one with the initial score.
+	// TODO: Possible redundancy, evaluate method during polish and code cleanup.
 	void UpdateScore(entt::registry& registry, entt::entity entity, unsigned score)
 	{
 		if (registry.any_of<Score>(entity))
 		{
 			auto& scoreComponent = registry.get<Score>(entity);
 			scoreComponent.score += score;
+			if (scoreComponent.score > scoreComponent.highScore) 
+			{
+				scoreComponent.highScore = scoreComponent.score;
+			}
 		}
 		else
 		{
 			registry.emplace<Score>(entity, score);
+			auto& scoreComponent = registry.get<Score>(entity);
+			scoreComponent.highScore = score;
 		}
 	}
 
 	// Component functions
-	void ScoreEvent(entt::registry& registry, entt::entity entity, unsigned score, const std::string name, const std::string loc)
+
+	// Pre-implementation in the event that we opt for time-based scoring.
+	void ScoreEvent(entt::registry& registry, entt::entity entity, const std::string name, const std::string loc)
 	{
+		// TODO: grab config time-based score increase value, if one exists.
+		unsigned score = 0;
+
 		entt::basic_view players = registry.view<Player, Score>();
 		for (auto player : players)
 		{
@@ -29,6 +43,7 @@ namespace GAME
 		}
 	}
 
+	// This function monitors player health frame-to-frame and updates the prior frame data to reflect the current health.
 	void MonitorPlayerHealth(entt::registry& registry, entt::entity entity)
 	{
 		entt::basic_view players = registry.view<Player, Health, PriorFrameData>();

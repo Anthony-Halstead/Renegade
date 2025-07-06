@@ -264,6 +264,12 @@ namespace GAME
 							<< enemyMatrix.row4.z << " | Health: "
 							<< enemyHealth << std::endl;
 
+						// This of a way to have a wave of enemies appear on the side of the boss and 
+						// face towards the player before they begin attacking
+
+						// Possibly also have those same enemies take and fly towards the player kamikaze style 
+						// but have them only fly through and damage the player and not destroy themselves 
+						// before flying off screen and flying back into their original positions
 					}
 				}
 
@@ -385,6 +391,8 @@ namespace GAME
 						UTIL::CreateTransform(registry, bullet, registry.get<Transform>(ent).matrix);
 						UTIL::CreateDynamicObjects(registry, bullet, bulletModel);
 						isFiring->cooldown = fireRate; // Reset cooldown
+
+						// Add logic here to have the enemies fire 5 bullets then wait a bit before firing again
 
 						// Set state to Attacking after first bullet
 						state.state = EnemyState::State::Attacking;

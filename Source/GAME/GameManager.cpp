@@ -179,6 +179,7 @@ namespace GAME
 						if (bullet.lifetime <= 0.0f)
 						{
 							registry.emplace<Destroy>(ent);
+							std::cout << "Bullet destroyed after lifetime expired." << std::endl;
 						}
 					}
 				}
@@ -241,6 +242,8 @@ namespace GAME
 
 						// Set enemy state to Moving
 						registry.emplace<GAME::EnemyState>(enemySpawn, GAME::EnemyState{ GAME::EnemyState::State::Moving });
+						// Debug log to show moving state
+						std::cout << "Enemy " << currentEnemyCount << " spawned with state Moving." << std::endl;
 
 						// Set initial position at the boss
 						GW::MATH::GMATRIXF enemyMatrix = bossTransform.matrix;
@@ -255,8 +258,13 @@ namespace GAME
 						registry.emplace<GAME::Velocity>(enemySpawn, GW::MATH::GVECTORF{ 0,0,0,0 });
 
 						UTIL::CreateDynamicObjects(registry, enemySpawn, enemyModel);
+						std::cout << "Spawned enemy at: "
+							<< enemyMatrix.row4.x << ", "
+							<< enemyMatrix.row4.y << ", "
+							<< enemyMatrix.row4.z << " | Health: "
+							<< enemyHealth << std::endl;
 
-						// Think of a way to have a wave of enemies appear on the side of the boss and 
+						// This of a way to have a wave of enemies appear on the side of the boss and 
 						// face towards the player before they begin attacking
 
 						// Possibly also have those same enemies take and fly towards the player kamikaze style 
@@ -339,6 +347,8 @@ namespace GAME
 				// Set enemy state to Ready
 				if (auto* state = registry.try_get<EnemyState>(ent)) {
 					state->state = EnemyState::State::Ready;
+					// Debug log to show ready state
+					std::cout << "Enemy " << static_cast<uint32_t>(ent) << " reached target and is now Ready." << std::endl;
 				}
 			}
 			else {
@@ -355,14 +365,14 @@ namespace GAME
 		auto view = registry.view<Enemy, EnemyState>();
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
 
-		auto& enemyStats = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Enemy1");
-		float fireRate = enemyStats.at("firerate").as<float>();
-
 		for (auto ent : view)
 		{
 			auto& state = registry.get<EnemyState>(ent);
 			if (state.state == EnemyState::State::Ready || state.state == EnemyState::State::Attacking)
 			{
+				auto& enemyStats = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Enemy1");
+				float fireRate = enemyStats.at("firerate").as<float>();
+
 				GAME::Firing* isFiring = registry.try_get<GAME::Firing>(ent);
 
 				if (isFiring != nullptr)
@@ -386,6 +396,7 @@ namespace GAME
 
 						// Set state to Attacking after first bullet
 						state.state = EnemyState::State::Attacking;
+						std::cout << "Enemy " << static_cast<uint32_t>(ent) << " is now Attacking." << std::endl;
 					}
 				}
 				else

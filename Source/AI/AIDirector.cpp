@@ -62,25 +62,9 @@ namespace AI
 
 	void Initialize(entt::registry& registry)
 	{
-		entt::entity enemyBoss = registry.create();
-		registry.emplace<GAME::Enemy_Boss>(enemyBoss);
-
-		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-		std::string enemyBossModel = (*config).at("EnemyBoss").at("model").as<std::string>();
-		unsigned bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned>();
-		GAME::Transform enemyTransform{};
-
-		GW::MATH::GMATRIXF identity;
-		GW::MATH::GMatrix::IdentityF(identity);
-
-		enemyTransform.matrix = identity;
-		enemyTransform.matrix.row4.z = 20.0f;
-		registry.emplace<GAME::Health>(enemyBoss, bossHealth);
-		registry.emplace<GAME::Transform>(enemyBoss, enemyTransform);
-		registry.emplace<GAME::SpawnEnemies>(enemyBoss, 20.0f);
-
-		UTIL::CreateDynamicObjects(registry, enemyBoss, enemyBossModel);
+		SpawnBoss(registry);
 	}
+
 	void UpdateFormation(entt::registry& r)
 	{
 		auto view = r.view<FormationMember, MoveTarget, GAME::Transform, GAME::Velocity>();

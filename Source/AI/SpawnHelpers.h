@@ -54,5 +54,38 @@ namespace AI
 			SpawnMember(R, anchor, i, spawnPos);
 		}
 	}
+
+	inline void SpawnBoss(entt::registry& R)
+	{
+		entt::entity enemyBoss = R.create();
+		R.emplace<GAME::Enemy_Boss>(enemyBoss);
+
+		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
+		std::string enemyBossModel = (*config).at("EnemyBoss").at("model").as<std::string>();
+		unsigned bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned>();
+		GAME::Transform enemyTransform{};
+
+		float enemyBossScale = (*config).at("EnemyBoss").at("scale").as<float>();
+
+		GW::MATH::GMATRIXF identity;
+		GW::MATH::GMatrix::IdentityF(identity);
+
+		GW::MATH::GMATRIXF scaleMatrix;
+		GW::MATH::GMatrix::IdentityF(scaleMatrix);
+		scaleMatrix.row1.x *= enemyBossScale;
+		scaleMatrix.row2.y *= enemyBossScale;
+		scaleMatrix.row3.z *= enemyBossScale;
+		scaleMatrix.row4.w = 1.0f;
+
+		GW::MATH::GMatrix::MultiplyMatrixF(enemyTransform.matrix, scaleMatrix, enemyTransform.matrix);
+
+		enemyTransform.matrix = scaleMatrix;
+		enemyTransform.matrix.row4.z = 30.0f;
+		R.emplace<GAME::Health>(enemyBoss, bossHealth);
+		R.emplace<GAME::Transform>(enemyBoss, enemyTransform);
+		R.emplace<GAME::SpawnEnemies>(enemyBoss, 20.0f);
+
+		UTIL::CreateDynamicObjects(R, enemyBoss, enemyBossModel);
+	}
 }
 #endif

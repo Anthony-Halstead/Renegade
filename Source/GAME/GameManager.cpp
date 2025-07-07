@@ -140,13 +140,13 @@ namespace GAME
 					{
 						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) && !registry.any_of<Hit>(otherEnt))
 						{
-							//// Prevent self-hit
-							//if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-							//	if (owner->owner == otherEnt) {
-							//		// This bullet belongs to this enemy, skip
-							//		continue;
-							//	}
-							//}
+							// Prevent self-hit
+							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+								if (owner->owner == otherEnt) {
+									// This bullet belongs to this enemy, skip
+									continue;
+								}
+							}
 
 							// Show current health of enemy boss
 							std::cout << "Enemy Boss current health: " << registry.get<Health>(otherEnt).health << std::endl;

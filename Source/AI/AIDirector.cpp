@@ -62,7 +62,7 @@ namespace AI
 
 	void Initialize(entt::registry& registry)
 	{
-		SpawnBoss(registry);
+		SpawnBoss(registry, "EnemyBoss_Station");
 	}
 
 	void UpdateFormation(entt::registry& r)
@@ -149,27 +149,19 @@ namespace AI
 
 			if (spawn.spawnTimer <= 0.0f)
 			{
-				spawn.spawnTimer = 20.0f;
+				spawn.spawnTimer = 10.0f;
 				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-				unsigned int bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned int>();
+				unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
 
-				if (bossHealth)
+				if (bossHealth != 0)
 				{
 					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
 
 					auto& bossTransform = registry.get<GAME::Transform>(ent);
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 
-					SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
-				}
-
-				if (hp.health <= 0)
-				{
-					registry.emplace<GAME::Destroy>(ent);
-					registry.remove<GAME::SpawnEnemies>(ent);
-					registry.remove<GAME::Enemy_Boss>(ent);
-					std::cout << "Enemy Boss defeated!" << std::endl;
-				}
+					//SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+				}				
 
 				entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
 
@@ -180,12 +172,22 @@ namespace AI
 					if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
 				}
 			}
+
+			if (hp.health <= 0)
+			{
+				registry.emplace<GAME::Destroy>(ent);
+				registry.remove<GAME::SpawnEnemies>(ent);
+				registry.remove<GAME::Enemy_Boss>(ent);
+				std::cout << "Enemy Boss defeated!" << std::endl;
+			}
 		}
 
 		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
 
 		if (enemiesLeft.empty())
 		{
+			// emplacement of GameOver is causing game to crash due to "No Slot Available" error
+
 			registry.emplace<GAME::GameOver>(entity);
 			std::cout << "You win, good job!" << std::endl;
 		}

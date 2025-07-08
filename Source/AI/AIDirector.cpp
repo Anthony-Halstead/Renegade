@@ -137,6 +137,7 @@ namespace AI
 	{
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
 		entt::basic_view enemies = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
+		entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
 
 		for (auto ent : enemies)
 		{
@@ -153,7 +154,9 @@ namespace AI
 				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 				unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
 
-				if (bossHealth != 0)
+				entt::basic_view currentEnemies = registry.view<GAME::Enemy, GAME::Health>();
+
+				if (bossHealth && currentEnemies.begin() == currentEnemies.end())
 				{
 					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
 
@@ -161,16 +164,14 @@ namespace AI
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 
 					SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
-				}				
-
-				entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
-
-				for (auto ent : lesserEnemies)
-				{
-					GAME::Health hp = registry.get<GAME::Health>(ent);
-
-					if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
 				}
+			}
+
+			for (auto ent : lesserEnemies)
+			{
+				GAME::Health hp = registry.get<GAME::Health>(ent);
+
+				if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
 			}
 
 			if (hp.health <= 0)
@@ -183,12 +184,9 @@ namespace AI
 		}
 
 		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
-
 		if (enemiesLeft.empty())
 		{
-			// emplacement of GameOver is causing game to crash due to "No Slot Available" error
-
-			registry.emplace<GAME::GameOver>(entity);
+			registry.emplace_or_replace<GAME::GameOver>(entity);
 			std::cout << "You win, good job!" << std::endl;
 		}
 	}
@@ -232,10 +230,13 @@ namespace AI
 	}
 	void Update(entt::registry& registry, entt::entity entity)
 	{
-		UpdateEnemies(registry, entity);
-		UpdateFormation(registry);
-		UpdateLocomotion(registry);
-		UpdateEnemyAttack(registry);
+		if (!registry.any_of<GAME::GameOver>(entity))
+		{
+			UpdateEnemies(registry, entity);
+			UpdateFormation(registry);
+			UpdateLocomotion(registry);
+			UpdateEnemyAttack(registry);
+		}		
 	}
 
 

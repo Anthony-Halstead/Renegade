@@ -138,11 +138,32 @@ namespace GAME
 
 					// Bullets hit enemy
 					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) && !registry.any_of<Hit>(otherEnt))
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy>(otherEnt) && !registry.any_of<Hit>(otherEnt))
 						{
 							// Prevent self-hit
 							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt) {
+								if (owner->owner == otherEnt || registry.any_of<Enemy>(otherEnt)) {
+									// This bullet belongs to this enemy, skip
+									continue;
+								}
+							}
+							// Show current health of enemy
+							std::cout << "Enemy current health: " << registry.get<Health>(otherEnt).health << std::endl;
+							--registry.get<Health>(otherEnt).health;
+							registry.emplace<Hit>(otherEnt);
+							registry.emplace_or_replace<Destroy>(ent);
+							std::cout << "Enemy hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
+						}
+					}
+
+					// Bullets hit enemy boss
+					{
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) 
+							&& !registry.any_of<Hit>(otherEnt))
+						{
+							// Prevent self-hit
+							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+								if (owner->owner == otherEnt || registry.any_of<Enemy_Boss>(otherEnt)) {
 									// This bullet belongs to this enemy, skip
 									continue;
 								}
@@ -179,7 +200,6 @@ namespace GAME
 						if (bullet.lifetime <= 0.0f)
 						{
 							registry.emplace<Destroy>(ent);
-							std::cout << "Bullet destroyed after lifetime expired." << std::endl;
 						}
 					}
 				}

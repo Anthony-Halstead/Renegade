@@ -156,11 +156,24 @@ namespace GAME
 
 					// Bullets hit enemy
 					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy>(otherEnt) && !registry.any_of<Hit>(otherEnt))
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) && !registry.any_of<Hit>(otherEnt))
 						{
+							//// Prevent self-hit
+							//if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+							//	if (owner->owner == otherEnt) {
+							//		// This bullet belongs to this enemy, skip
+							//		continue;
+							//	}
+							//}
+
+							// Show current health of enemy boss
+							std::cout << "Enemy Boss current health: " << registry.get<Health>(otherEnt).health << std::endl;
+
 							--registry.get<Health>(otherEnt).health;
 							registry.emplace<Hit>(otherEnt);
 							registry.emplace_or_replace<Destroy>(ent);
+
+							std::cout << "Enemy Boss hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
 						}
 					}
 
@@ -174,6 +187,20 @@ namespace GAME
 						}
 					}
 				}
+				else
+				{
+					// Destroy bullet after 5 seconds
+					if (registry.any_of<Bullet>(ent) && !registry.any_of<Destroy>(ent))
+					{
+						auto& bullet = registry.get<Bullet>(ent);
+						bullet.lifetime -= registry.ctx().get<UTIL::DeltaTime>().dtSec;
+						if (bullet.lifetime <= 0.0f)
+						{
+							registry.emplace<Destroy>(ent);
+							std::cout << "Bullet destroyed after lifetime expired." << std::endl;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -182,62 +209,6 @@ namespace GAME
 	{
 		entt::basic_view hit = registry.view<Hit>();
 		registry.remove<Hit>(hit.begin(), hit.end());
-	}
-
-	void UpdateEnemies(entt::registry& registry, entt::entity& entity)
-	{
-		entt::basic_view enemies = registry.view<Enemy, Health>();
-
-		for (auto ent : enemies)
-		{
-			Health hp = registry.get<Health>(ent);
-
-			if (hp.health == 0)
-			{
-				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-				unsigned enemyShatter = registry.get<Shatters>(ent).shatterCount - 1;
-
-				UpdateScoreManager(registry, "Enemy1", "score");
-
-				if (enemyShatter)
-				{
-					std::string enemyModel = (*config).at("Enemy1").at("model").as<std::string>();
-
-					float enemySpeed = (*config).at("Enemy1").at("speed").as<float>();
-					float enemyShatterScale = (*config).at("Enemy1").at("shatterScale").as<float>();
-					unsigned enemyHealth = (*config).at("Enemy1").at("hitpoints").as<unsigned>();
-					unsigned shatterAmount = (*config).at("Enemy1").at("shatterAmount").as<unsigned>();
-
-					GW::MATH::GMATRIXF transform = registry.get<Transform>(ent).matrix;
-					GW::MATH::GVECTORF vec = { 1, 1, 1, 1 };
-
-					GW::MATH::GVector::ScaleF(vec, enemyShatterScale, vec);
-					GW::MATH::GMatrix::ScaleGlobalF(transform, vec, transform);
-
-					for (unsigned i = 0; i < shatterAmount; ++i)
-					{
-						entt::entity enemy = registry.create();
-
-						registry.emplace<GAME::Enemy>(enemy);
-						registry.emplace<GAME::Health>(enemy, enemyHealth);
-						registry.emplace<GAME::Shatters>(enemy, enemyShatter);
-
-						UTIL::CreateVelocity(registry, enemy, UTIL::GetRandomVelocityVector(), enemySpeed);
-						UTIL::CreateTransform(registry, enemy, transform);
-						UTIL::CreateDynamicObjects(registry, enemy, enemyModel);
-					}
-				}
-				registry.emplace<Destroy>(ent);
-			}
-		}
-
-		entt::basic_view enemiesLeft = registry.view<Enemy>();
-
-		if (enemiesLeft.empty())
-		{
-			registry.emplace<GameOver>(entity);
-			std::cout << "You win, good job!" << std::endl;
-		}
 	}
 
 	void UpdatePlayers(entt::registry& registry, const entt::entity& entity)
@@ -264,14 +235,13 @@ namespace GAME
 		for (auto ent : destroy) registry.destroy(ent);
 	}
 
-	void Update(entt::registry& registry, entt::entity entity) 
+	void Update(entt::registry& registry, entt::entity entity)
 	{
 		if (!registry.any_of<GameOver>(entity))
 		{
 			UpdatePosition(registry);
 			UpdateCollide(registry);
 			UpdateHit(registry);
-			UpdateEnemies(registry, entity);
 			UpdatePlayers(registry, entity);
 			UpdateDestroy(registry);
 		}

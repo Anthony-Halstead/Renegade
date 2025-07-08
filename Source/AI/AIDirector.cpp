@@ -133,6 +133,20 @@ namespace AI
 				vel = { 0,0,0,0 };
 		}
 	}
+	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
+	{
+		auto view = registry.view<GAME::Invulnerability>();
+		for (auto ent : view)
+		{
+			auto& invuln = registry.get<GAME::Invulnerability>(ent);
+			invuln.invulnPeriod -= deltaTime;
+			if (invuln.invulnPeriod <= 0.0f)
+			{
+				registry.remove<GAME::Invulnerability>(ent);
+				std::cout << "Enemy Boss is no longer invulnerable." << std::endl;
+			}
+		}
+	}
 	void UpdateEnemies(entt::registry& registry, entt::entity& entity)
 	{
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
@@ -181,6 +195,10 @@ namespace AI
 				registry.remove<GAME::Enemy_Boss>(ent);
 				std::cout << "Enemy Boss defeated!" << std::endl;
 			}
+			else
+			{
+				registry.patch<GAME::Enemy_Boss>(ent);
+			}
 		}
 
 		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
@@ -188,7 +206,7 @@ namespace AI
 		{
 			registry.emplace_or_replace<GAME::GameOver>(entity);
 			std::cout << "You win, good job!" << std::endl;
-		}
+		}		
 	}
 	void UpdateEnemyAttack(entt::registry& R)
 	{
@@ -227,7 +245,7 @@ namespace AI
 
 			fire->cooldown = rate;
 		}
-	}
+	}	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
 		if (!registry.any_of<GAME::GameOver>(entity))
@@ -236,6 +254,7 @@ namespace AI
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);
 			UpdateEnemyAttack(registry);
+			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);
 		}		
 	}
 

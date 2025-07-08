@@ -7,6 +7,24 @@ namespace GAME
 {
 	// Helper functions
 
+	// This takes in a name and location to update the player score that exists in the game manager.
+	// It also checks whether this score is a new high score and replaces it if so.
+	void UpdateScoreManager(entt::registry& registry, const std::string name, const std::string loc)
+	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::basic_view scoreManager = registry.view<Score>();
+		for (auto scoreEnt : scoreManager)
+		{
+			auto& score = registry.get<Score>(scoreEnt);
+			/* ///      WARNING       /// */
+			/// THIS IS A WHOLE MAJOR PUSH BEHIND ///
+			/* TODO: update config before running */
+			score.score += (*config).at(name).at(loc).as<unsigned>();
+			if (score.score > score.highScore) score.highScore = score.score;
+		}
+	}
+
 	void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
 	{
 		GW::MATH::GQUATERNIONF rotation;
@@ -192,8 +210,6 @@ namespace GAME
 		entt::basic_view hit = registry.view<Hit>();
 		registry.remove<Hit>(hit.begin(), hit.end());
 	}
-
-
 
 	void UpdatePlayers(entt::registry& registry, const entt::entity& entity)
 	{

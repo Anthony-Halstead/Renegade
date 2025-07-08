@@ -16,6 +16,7 @@ namespace GAME
 
 	///*** Components ***///
 	struct GameManager {};
+	struct StateManager {};
 	
 	struct Transform {
 		GW::MATH::GMATRIXF matrix;
@@ -59,6 +60,14 @@ namespace GAME
 
 	struct SpawnEnemies {
 		float spawnTimer;
+  };
+	struct Score {
+		unsigned score;
+		unsigned highScore;
+	};
+
+	struct PriorFrameData {
+		unsigned pHealth;
 	};
 
 }// namespace GAME

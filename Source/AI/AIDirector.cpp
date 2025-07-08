@@ -62,25 +62,9 @@ namespace AI
 
 	void Initialize(entt::registry& registry)
 	{
-		entt::entity enemyBoss = registry.create();
-		registry.emplace<GAME::Enemy_Boss>(enemyBoss);
-
-		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-		std::string enemyBossModel = (*config).at("EnemyBoss").at("model").as<std::string>();
-		unsigned bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned>();
-		GAME::Transform enemyTransform{};
-
-		GW::MATH::GMATRIXF identity;
-		GW::MATH::GMatrix::IdentityF(identity);
-
-		enemyTransform.matrix = identity;
-		enemyTransform.matrix.row4.z = 20.0f;
-		registry.emplace<GAME::Health>(enemyBoss, bossHealth);
-		registry.emplace<GAME::Transform>(enemyBoss, enemyTransform);
-		registry.emplace<GAME::SpawnEnemies>(enemyBoss, 20.0f);
-
-		UTIL::CreateDynamicObjects(registry, enemyBoss, enemyBossModel);
+		SpawnBoss(registry, "EnemyBoss_Station");
 	}
+
 	void UpdateFormation(entt::registry& r)
 	{
 		auto view = r.view<FormationMember, MoveTarget, GAME::Transform, GAME::Velocity>();
@@ -149,10 +133,25 @@ namespace AI
 				vel = { 0,0,0,0 };
 		}
 	}
+	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
+	{
+		auto view = registry.view<GAME::Invulnerability>();
+		for (auto ent : view)
+		{
+			auto& invuln = registry.get<GAME::Invulnerability>(ent);
+			invuln.invulnPeriod -= deltaTime;
+			if (invuln.invulnPeriod <= 0.0f)
+			{
+				registry.remove<GAME::Invulnerability>(ent);
+				std::cout << "Enemy Boss is no longer invulnerable." << std::endl;
+			}
+		}
+	}
 	void UpdateEnemies(entt::registry& registry, entt::entity& entity)
 	{
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
 		entt::basic_view enemies = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
+		entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
 
 		for (auto ent : enemies)
 		{
@@ -165,46 +164,49 @@ namespace AI
 
 			if (spawn.spawnTimer <= 0.0f)
 			{
-				spawn.spawnTimer = 20.0f;
+				spawn.spawnTimer = 10.0f;
 				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-				unsigned int bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned int>();
+				unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
 
-				if (bossHealth)
+				entt::basic_view currentEnemies = registry.view<GAME::Enemy, GAME::Health>();
+
+				if (bossHealth && currentEnemies.begin() == currentEnemies.end())
 				{
 					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
 
 					auto& bossTransform = registry.get<GAME::Transform>(ent);
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 
-					SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+					SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
 				}
+			}
 
-				if (hp.health <= 0)
-				{
-					registry.emplace<GAME::Destroy>(ent);
-					registry.remove<GAME::SpawnEnemies>(ent);
-					registry.remove<GAME::Enemy_Boss>(ent);
-					std::cout << "Enemy Boss defeated!" << std::endl;
-				}
+			for (auto ent : lesserEnemies)
+			{
+				GAME::Health hp = registry.get<GAME::Health>(ent);
 
-				entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
+				if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
+			}
 
-				for (auto ent : lesserEnemies)
-				{
-					GAME::Health hp = registry.get<GAME::Health>(ent);
-
-					if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
-				}
+			if (hp.health <= 0)
+			{
+				registry.emplace<GAME::Destroy>(ent);
+				registry.remove<GAME::SpawnEnemies>(ent);
+				registry.remove<GAME::Enemy_Boss>(ent);
+				std::cout << "Enemy Boss defeated!" << std::endl;
+			}
+			else
+			{
+				registry.patch<GAME::Enemy_Boss>(ent);
 			}
 		}
 
 		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
-
 		if (enemiesLeft.empty())
 		{
-			registry.emplace<GAME::GameOver>(entity);
+			registry.emplace_or_replace<GAME::GameOver>(entity);
 			std::cout << "You win, good job!" << std::endl;
-		}
+		}		
 	}
 	void UpdateEnemyAttack(entt::registry& R)
 	{
@@ -243,13 +245,17 @@ namespace AI
 
 			fire->cooldown = rate;
 		}
-	}
+	}	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
-		UpdateEnemies(registry, entity);
-		UpdateFormation(registry);
-		UpdateLocomotion(registry);
-		UpdateEnemyAttack(registry);
+		if (!registry.any_of<GAME::GameOver>(entity))
+		{
+			UpdateEnemies(registry, entity);
+			UpdateFormation(registry);
+			UpdateLocomotion(registry);
+			UpdateEnemyAttack(registry);
+			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);
+		}		
 	}
 
 

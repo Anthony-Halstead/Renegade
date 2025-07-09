@@ -60,7 +60,8 @@ namespace GAME
 
 	struct SpawnEnemies {
 		float spawnTimer;
-  };
+	};
+
 	struct Score {
 		unsigned score;
 		unsigned highScore;

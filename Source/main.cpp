@@ -167,9 +167,7 @@ void GameplayBehavior(entt::registry& registry)
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Transform>(player, playerTransform);
 	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
-	registry.emplace<GAME::Health>(enemy, enemyHealth);
-	registry.emplace<GAME::Shatters>(enemy, enemyShatter);
-	registry.emplace<GAME::Score>(stateManager, 0);
+	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
 }

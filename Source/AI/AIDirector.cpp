@@ -8,6 +8,21 @@
 
 namespace AI
 {
+	// This takes in a name and location to update the player score that exists in the game manager.
+	// It also checks whether this score is a new high score and replaces it if so.
+	void UpdateScoreManager(entt::registry& registry, const std::string name, const std::string loc)
+	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::basic_view scoreManager = registry.view<GAME::Score>();
+		for (auto scoreEnt : scoreManager)
+		{
+			auto& score = registry.get<GAME::Score>(scoreEnt);
+			score.score += (*config).at(name).at(loc).as<unsigned>();
+			if (score.score > score.highScore) score.highScore = score.score;
+		}
+	}
+
 	float LengthXZ(const GW::MATH::GVECTORF& v)
 	{
 		return std::sqrt(v.x * v.x + v.z * v.z);
@@ -78,6 +93,7 @@ namespace AI
 		registry.emplace<GAME::Health>(enemyBoss, bossHealth);
 		registry.emplace<GAME::Transform>(enemyBoss, enemyTransform);
 		registry.emplace<GAME::SpawnEnemies>(enemyBoss, 20.0f);
+		registry.emplace<GAME::PriorFrameData>(enemyBoss, GAME::PriorFrameData{ bossHealth });
 
 		UTIL::CreateDynamicObjects(registry, enemyBoss, enemyBossModel);
 	}
@@ -181,6 +197,7 @@ namespace AI
 
 				if (hp.health <= 0)
 				{
+					UpdateScoreManager(registry, "EnemyBoss", "score");
 					registry.emplace<GAME::Destroy>(ent);
 					registry.remove<GAME::SpawnEnemies>(ent);
 					registry.remove<GAME::Enemy_Boss>(ent);
@@ -193,7 +210,10 @@ namespace AI
 				{
 					GAME::Health hp = registry.get<GAME::Health>(ent);
 
-					if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
+					if (hp.health <= 0) {
+						UpdateScoreManager(registry, "Enemy1", "score");
+						registry.emplace<GAME::Destroy>(ent);
+					}
 				}
 			}
 		}
@@ -204,6 +224,12 @@ namespace AI
 		{
 			registry.emplace<GAME::GameOver>(entity);
 			std::cout << "You win, good job!" << std::endl;
+			auto scoreView = registry.view<GAME::Score>();
+			if (!scoreView.empty()) {
+				auto scoreEnt = scoreView.front();
+				std::cout << "Final Score: " << registry.get<GAME::Score>(scoreEnt).score << std::endl;
+				std::cout << "High Score: " << registry.get<GAME::Score>(scoreEnt).highScore << std::endl;
+			}
 		}
 	}
 	void UpdateEnemyAttack(entt::registry& R)

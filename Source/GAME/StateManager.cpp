@@ -1,5 +1,6 @@
 #include "GameComponents.h"
 #include "../UTIL/Utilities.h"
+#include "../DRAW/DrawComponents.h"
 #include "../CCL.h"
 
 namespace GAME
@@ -22,6 +23,7 @@ namespace GAME
 		}
 		else
 		{
+			// this should never happen, but if it does, we create a new Score component.
 			registry.emplace<Score>(entity, score);
 			auto& scoreComponent = registry.get<Score>(entity);
 			scoreComponent.highScore = score;
@@ -30,7 +32,7 @@ namespace GAME
 
 	// Component functions
 
-	// Pre-implementation in the event that we opt for time-based scoring.
+	// Pre-implementation included in the event that we opt for time-based scoring.
 	void ScoreEvent(entt::registry& registry, const std::string name, const std::string loc)
 	{
 		// TODO: grab config time-based score increase value, if one exists.
@@ -66,11 +68,39 @@ namespace GAME
 		{
 			if (registry.get<Health>(ent).health < registry.get<PriorFrameData>(ent).pHealth) {
 				// communicate to UI or other systems that boss has been hit
-				ScoreEvent(registry, "EnemyBoss", "score");
-				std::cout << "Boss has been hit! Current health: " << registry.get<Health>(ent).health << " down from: " << registry.get<PriorFrameData>(ent).pHealth << std::endl;
+				if (registry.any_of<BossTitle>(ent)) {
+					std::string bossName = registry.get<BossTitle>(ent).name;
+					ScoreEvent(registry, bossName, "scorePerHP");
+				}
+				else {
+					std::cout << "Boss has been hit, but no name was provided, no score awarded " << std::endl;
+				}
+				// std::cout << "Boss has been hit! Current health: " << registry.get<Health>(ent).health << " down from: " << registry.get<PriorFrameData>(ent).pHealth << std::endl;
+			}
+			if (registry.get<Health>(ent).health <= 0) {
+				// communicate to UI or other systems that boss has been defeated
+				if (registry.any_of<BossTitle>(ent)) {
+					std::string bossName = registry.get<BossTitle>(ent).name;
+					ScoreEvent(registry, bossName, "score");
+				}
+				else {
+					std::cout << "Boss defeated, but no name was provided, no score awarded " << std::endl;
+				}
 			}
 			// update prior frame data to reflect current frame
 			registry.get<PriorFrameData>(ent).pHealth = registry.get<Health>(ent).health;
+		}
+	}
+
+	void MonitorEnemyHealth(entt::registry& registry)
+	{
+		entt::basic_view enemies = registry.view<Enemy, Health>();
+		for (auto ent : enemies)
+		{
+			if (registry.get<Health>(ent).health <= 0) {
+				// communicate to UI or other systems that enemy has been defeated
+				ScoreEvent(registry, "Enemy1", "score");
+			}
 		}
 	}
 
@@ -82,6 +112,7 @@ namespace GAME
 			MonitorPlayerHealth(registry);
 			// ScoreEvent(registry, "Player", "score");
 			MonitorBossHealth(registry);
+			MonitorEnemyHealth(registry);
 		}
 		else
 		{

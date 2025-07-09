@@ -71,5 +71,9 @@ namespace GAME
 		unsigned pHealth;
 	};
 
+	struct BossTitle {
+		std::string name;
+	};
+
 }// namespace GAME
 #endif // !GAME_COMPONENTS_H_

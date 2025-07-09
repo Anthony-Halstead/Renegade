@@ -1,8 +1,13 @@
-#include "DrawComponents.h"
+﻿#include "DrawComponents.h"
 #include "../CCL.h"
 // component dependencies
 #include "./Utility/FileIntoString.h"
+#include "../TextureUtils.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../stb_image_write.h"
 #include "shaderc/shaderc.h" // needed for compiling shaders at runtime
 #ifdef _WIN32 // must use MT platform DLL libraries on windows
 #pragma comment(lib, "shaderc_combined.lib") 
@@ -10,7 +15,157 @@
 
 namespace DRAW
 {
-	//*** HELPER METHODS ***//
+	////*** HELPER METHODS ***//
+
+	std::string ExtractFilePath(const char* map_Kd_raw)
+	{
+		if (!map_Kd_raw) return "";
+		std::string input(map_Kd_raw);
+
+		size_t lastSlash = input.find_last_of("/\\");
+		if (lastSlash != std::string::npos) {
+			input = input.substr(lastSlash + 1);
+		}
+
+		size_t lastSpace = input.find_last_of(' ');
+		if (lastSpace != std::string::npos) {
+			input = input.substr(lastSpace + 1);
+		}
+
+		input.erase(0, input.find_first_not_of(' '));
+		input.erase(input.find_last_not_of(' ') + 1);
+
+		if (
+			input.length() < 5 ||
+			(input.find(".png") == std::string::npos &&
+				input.find(".jpeg") == std::string::npos &&
+				input.find(".jpg") == std::string::npos)
+			)
+			return "";
+
+		return input;
+	}
+
+	void Construct_Textures(entt::registry& registry, entt::entity entity)
+	{
+		using namespace DRAW;
+		CPULevel& cpuLevel = registry.get<CPULevel>(entity);
+		Level_Data& level = cpuLevel.levelData;
+		VulkanRenderer& vkRenderer = registry.get<VulkanRenderer>(entity);
+
+		const char* TEXTURE_DIR = "../Models/Textures/";
+
+		std::map<std::string, int> albedoFileToIndex, normalFileToIndex, emissiveFileToIndex,
+			alphaFileToIndex, specularFileToIndex;
+
+		auto loadTextureMap = [&](const char* texPath, std::vector<TextureData>& texVec, std::map<std::string, int>& fileToIdx)
+			{
+				std::string fname = ExtractFilePath(texPath);
+				if (!fname.empty() && fileToIdx.count(fname) == 0) {
+					std::string fullPath = std::string(TEXTURE_DIR) + fname;
+					std::ifstream f(fullPath);
+					if (!f.good()) {
+						std::cout << "Texture file [" << fullPath << "] does NOT exist!\n";
+						fileToIdx[fname] = -1;
+						return;
+					}
+					std::cout << "Texture file [" << fullPath << "] FOUND!\n";
+					TextureData texData{};
+					UploadTextureToGPU(vkRenderer.vlkSurface, fullPath.c_str(), texData.memory, texData.image, texData.imageView);
+					texVec.push_back(texData);
+					fileToIdx[fname] = static_cast<int>(texVec.size()) - 1;
+				}
+			};
+
+		for (size_t i = 0; i < level.levelMaterials.size(); ++i) {
+			const H2B::MATERIAL& mat = level.levelMaterials[i];
+			loadTextureMap(mat.map_Kd, vkRenderer.textures, albedoFileToIndex);
+			loadTextureMap(mat.bump, vkRenderer.texturesNormal, normalFileToIndex);
+			loadTextureMap(mat.map_Ke, vkRenderer.texturesEmissive, emissiveFileToIndex);
+			loadTextureMap(mat.map_d, vkRenderer.texturesAlpha, alphaFileToIndex);
+			loadTextureMap(mat.map_Ks, vkRenderer.texturesSpecular, specularFileToIndex);
+		}
+
+		auto ensureFallback = [&](std::vector<TextureData>& texVec, const char* fallbackFile) {
+			if (texVec.empty()) {
+				TextureData fallback{};
+				UploadTextureToGPU(vkRenderer.vlkSurface, fallbackFile, fallback.memory, fallback.image, fallback.imageView);
+				texVec.push_back(fallback);
+			}
+			};
+
+		ensureFallback(vkRenderer.textures, "../Models/Textures/fallback_albedo.png");
+		ensureFallback(vkRenderer.texturesNormal, "../Models/Textures/fallback_normal.png");
+		ensureFallback(vkRenderer.texturesEmissive, "../Models/Textures/fallback_emissive.png");
+		ensureFallback(vkRenderer.texturesAlpha, "../Models/Textures/fallback_alpha.png");
+		ensureFallback(vkRenderer.texturesSpecular, "../Models/Textures/fallback_specular.png");
+
+		level.levelTextures.resize(level.levelMaterials.size());
+		for (size_t i = 0; i < level.levelMaterials.size(); ++i) {
+			const H2B::MATERIAL& mat = level.levelMaterials[i];
+			auto& tex = level.levelTextures[i];
+
+			tex.albedoIndex = -1;
+			if (mat.map_Kd && mat.map_Kd[0]) {
+				std::string fname = ExtractFilePath(mat.map_Kd);
+				auto it = albedoFileToIndex.find(fname);
+				if (it != albedoFileToIndex.end())
+					tex.albedoIndex = it->second;
+			}
+
+			tex.normalIndex = -1;
+			if (mat.bump && mat.bump[0]) {
+				std::string fname = ExtractFilePath(mat.bump);
+				auto it = normalFileToIndex.find(fname);
+				if (it != normalFileToIndex.end())
+					tex.normalIndex = it->second;
+			}
+
+			tex.emissiveIndex = -1;
+			if (mat.map_Ke && mat.map_Ke[0]) {
+				std::string fname = ExtractFilePath(mat.map_Ke);
+				auto it = emissiveFileToIndex.find(fname);
+				if (it != emissiveFileToIndex.end())
+					tex.emissiveIndex = it->second;
+			}
+
+			tex.alphaIndex = -1;
+			if (mat.map_d && mat.map_d[0]) {
+				std::string fname = ExtractFilePath(mat.map_d);
+				auto it = alphaFileToIndex.find(fname);
+				if (it != alphaFileToIndex.end())
+					tex.alphaIndex = it->second;
+			}
+
+			tex.specularIndex = -1;
+			if (mat.map_Ks && mat.map_Ks[0]) {
+				std::string fname = ExtractFilePath(mat.map_Ks);
+				auto it = specularFileToIndex.find(fname);
+				if (it != specularFileToIndex.end())
+					tex.specularIndex = it->second;
+			}
+		}
+
+		if (vkRenderer.textureSampler == VK_NULL_HANDLE) {
+			VkSamplerCreateInfo samplerInfo{};
+			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.magFilter = VK_FILTER_LINEAR;
+			samplerInfo.minFilter = VK_FILTER_LINEAR;
+			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			samplerInfo.anisotropyEnable = VK_FALSE;
+			samplerInfo.maxAnisotropy = 1.0f;
+			samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+			samplerInfo.unnormalizedCoordinates = VK_FALSE;
+			samplerInfo.compareEnable = VK_FALSE;
+			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			if (vkCreateSampler(vkRenderer.device, &samplerInfo, nullptr, &vkRenderer.textureSampler) != VK_SUCCESS) {
+				throw std::runtime_error("Failed to create Vulkan texture sampler!");
+			}
+		}
+	}
+
 
 	VkViewport CreateViewportFromWindowDimensions(unsigned int windowWidth, unsigned int windowHeight)
 	{
@@ -42,19 +197,17 @@ namespace DRAW
 		vulkanRenderer.vlkSurface.GetSwapchainImageCount(frameCount);
 		vulkanRenderer.descriptorSets.resize(frameCount);
 
-#pragma region Descriptor Layout
+#pragma region Descriptor Layout (Uniform/Storage)
 		VkDescriptorSetLayoutBinding layoutBinding[2] = {};
 		layoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		layoutBinding[0].descriptorCount = 1;
 		layoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 		layoutBinding[0].binding = 0;
-		layoutBinding[0].pImmutableSamplers = nullptr;
 
 		layoutBinding[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		layoutBinding[1].descriptorCount = 1;
 		layoutBinding[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 		layoutBinding[1].binding = 1;
-		layoutBinding[1].pImmutableSamplers = nullptr;
 
 		VkDescriptorSetLayoutCreateInfo setCreateInfo = {};
 		setCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -65,51 +218,124 @@ namespace DRAW
 		vkCreateDescriptorSetLayout(vulkanRenderer.device, &setCreateInfo, nullptr, &vulkanRenderer.descriptorLayout);
 #pragma endregion
 
-#pragma region Texture Descriptor Layout
+#pragma region Texture Descriptor Layout (6 Bindings)
+		uint32_t maxAlbedo = static_cast<uint32_t>(vulkanRenderer.textures.size());
+		uint32_t maxNormal = static_cast<uint32_t>(vulkanRenderer.texturesNormal.size());
+		uint32_t maxEmissive = static_cast<uint32_t>(vulkanRenderer.texturesEmissive.size());
+		uint32_t maxAlpha = static_cast<uint32_t>(vulkanRenderer.texturesAlpha.size());
+		uint32_t maxSpecular = static_cast<uint32_t>(vulkanRenderer.texturesSpecular.size());
 
-		VkDescriptorBindingFlagsEXT descriptorBindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT;
+		VkDescriptorSetLayoutBinding texBindings[5] = {};
 
-		VkDescriptorSetLayoutBindingFlagsCreateInfoEXT descriptorSetLayoutBindingFlagsCreateInfo = {};
-		descriptorSetLayoutBindingFlagsCreateInfo.bindingCount = 1;
-		descriptorSetLayoutBindingFlagsCreateInfo.pBindingFlags = &descriptorBindingFlags;
-		descriptorSetLayoutBindingFlagsCreateInfo.pNext = nullptr;
-		descriptorSetLayoutBindingFlagsCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+		texBindings[0].binding = 0;
+		texBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		texBindings[0].descriptorCount = maxAlbedo;
+		texBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		VkDescriptorSetLayoutBinding textureDescriptorSetLayoutBinding = {};
+		texBindings[1].binding = 1;
+		texBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		texBindings[1].descriptorCount = maxNormal;
+		texBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		textureDescriptorSetLayoutBinding.binding = 0;
-		textureDescriptorSetLayoutBinding.descriptorCount = vulkanRenderer.textures.size();
-		textureDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		textureDescriptorSetLayoutBinding.pImmutableSamplers = 0;
-		textureDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		texBindings[2].binding = 2;
+		texBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		texBindings[2].descriptorCount = maxEmissive;
+		texBindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		VkDescriptorSetLayoutCreateInfo textureSetCreateInfo = {};
-		textureSetCreateInfo.bindingCount = 1;
-		textureSetCreateInfo.flags = 0;
-		textureSetCreateInfo.pBindings = &textureDescriptorSetLayoutBinding;
-		textureSetCreateInfo.pNext = &descriptorSetLayoutBindingFlagsCreateInfo;
-		textureSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		texBindings[3].binding = 3;
+		texBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		texBindings[3].descriptorCount = maxAlpha;
+		texBindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		vkCreateDescriptorSetLayout(vulkanRenderer.device, &textureSetCreateInfo, nullptr, &vulkanRenderer.textureDescriptorLayout);
+		texBindings[4].binding = 4;
+		texBindings[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		texBindings[4].descriptorCount = maxSpecular;
+		texBindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+		VkDescriptorSetLayoutCreateInfo texLayoutInfo = {};
+		texLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		texLayoutInfo.bindingCount = 5;
+		texLayoutInfo.pBindings = texBindings;
+
+		vkCreateDescriptorSetLayout(
+			vulkanRenderer.device, &texLayoutInfo, nullptr, &vulkanRenderer.textureSetLayout
+		);
 #pragma endregion
 
 #pragma region Descriptor Pool
-		VkDescriptorPoolCreateInfo descriptorpool_create_info = {};
-		descriptorpool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		VkDescriptorPoolSize descriptorpool_size[2] = {
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount }
+		VkDescriptorPoolSize poolSizes[7] = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,   frameCount },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,   frameCount },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxAlbedo },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxNormal },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxEmissive },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxAlpha },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxSpecular }
 		};
-		descriptorpool_create_info.poolSizeCount = 2;
-		descriptorpool_create_info.pPoolSizes = descriptorpool_size;
-		descriptorpool_create_info.maxSets = frameCount;
-		descriptorpool_create_info.flags = 0;
-		descriptorpool_create_info.pNext = nullptr;
-		vkCreateDescriptorPool(vulkanRenderer.device, &descriptorpool_create_info, nullptr, &vulkanRenderer.descriptorPool);
+
+		VkDescriptorPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.poolSizeCount = 7;
+		poolInfo.pPoolSizes = poolSizes;
+		poolInfo.maxSets = frameCount * 2;
+		poolInfo.flags = 0;
+		poolInfo.pNext = nullptr;
+		vkCreateDescriptorPool(vulkanRenderer.device, &poolInfo, nullptr, &vulkanRenderer.descriptorPool);
 #pragma endregion
 
-#pragma region Allocate Descriptor Sets
+		vulkanRenderer.textureSetLayouts.resize(frameCount);
+		for (uint32_t i = 0; i < frameCount; ++i)
+			vulkanRenderer.textureSetLayouts[i] = vulkanRenderer.textureSetLayout;
+
+		VkDescriptorSetAllocateInfo texAllocInfo = {};
+		texAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		texAllocInfo.descriptorPool = vulkanRenderer.descriptorPool;
+		texAllocInfo.descriptorSetCount = frameCount;
+		texAllocInfo.pSetLayouts = vulkanRenderer.textureSetLayouts.data();
+		texAllocInfo.pNext = nullptr;
+
+		vulkanRenderer.textureDescriptorSets.resize(frameCount);
+		if (vkAllocateDescriptorSets(vulkanRenderer.device, &texAllocInfo, vulkanRenderer.textureDescriptorSets.data()) != VK_SUCCESS)
+			throw std::runtime_error("Failed to allocate texture descriptor sets!");
+
+		for (uint32_t i = 0; i < frameCount; ++i) {
+			std::vector<VkWriteDescriptorSet> writes(5);
+
+			auto createImageInfos = [vulkanRenderer](const std::vector<TextureData>& texVec) {
+				std::vector<VkDescriptorImageInfo> infos;
+				for (const auto& tex : texVec) {
+					VkDescriptorImageInfo info = {};
+					info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					info.imageView = tex.imageView;
+					info.sampler = vulkanRenderer.textureSampler;
+					infos.push_back(info);
+				}
+				return infos;
+				};
+
+			auto albedoInfos = createImageInfos(vulkanRenderer.textures);
+			auto normalInfos = createImageInfos(vulkanRenderer.texturesNormal);
+			auto emissiveInfos = createImageInfos(vulkanRenderer.texturesEmissive);
+			auto alphaInfos = createImageInfos(vulkanRenderer.texturesAlpha);
+			auto specularInfos = createImageInfos(vulkanRenderer.texturesSpecular);
+
+
+			writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writes[0].dstSet = vulkanRenderer.textureDescriptorSets[i];
+			writes[0].dstBinding = 0;
+			writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			writes[0].descriptorCount = albedoInfos.size();
+			writes[0].pImageInfo = albedoInfos.data();
+
+			writes[1] = writes[0]; writes[1].dstBinding = 1; writes[1].descriptorCount = normalInfos.size(); writes[1].pImageInfo = normalInfos.data();
+			writes[2] = writes[0]; writes[2].dstBinding = 2; writes[2].descriptorCount = emissiveInfos.size(); writes[2].pImageInfo = emissiveInfos.data();
+			writes[3] = writes[0]; writes[3].dstBinding = 3; writes[3].descriptorCount = alphaInfos.size(); writes[3].pImageInfo = alphaInfos.data();
+			writes[4] = writes[0]; writes[4].dstBinding = 4; writes[4].descriptorCount = specularInfos.size(); writes[4].pImageInfo = specularInfos.data();
+
+			vkUpdateDescriptorSets(vulkanRenderer.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+		}
+
+#pragma region Allocate Descriptor Sets (Uniform/Storage)
 		VkDescriptorSetAllocateInfo allocateInfo = {};
 		allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocateInfo.descriptorSetCount = 1;
@@ -122,20 +348,16 @@ namespace DRAW
 		}
 #pragma endregion
 
-		// Add the 2 buffers, this will create the initial buffers so we can finish building our descriptor set
-		auto& storageBuffer = registry.emplace<VulkanGPUInstanceBuffer>(entity,
-			VulkanGPUInstanceBuffer{ 16 }); // Start with a reasonable size of elements. The Buffer will grow if it needs to later
+		auto& storageBuffer = registry.emplace<VulkanGPUInstanceBuffer>(entity, VulkanGPUInstanceBuffer{ 16 });
 		auto& uniformBuffer = registry.emplace<VulkanUniformBuffer>(entity);
-
 
 		for (int i = 0; i < frameCount; i++)
 		{
-
 			VkDescriptorBufferInfo uniformBufferInfo = { uniformBuffer.buffer[i], 0, VK_WHOLE_SIZE };
 			VkWriteDescriptorSet uniformWrite = {};
 			uniformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			uniformWrite.dstSet = vulkanRenderer.descriptorSets[i];
-			uniformWrite.dstBinding = 0; // 0 For the uniform buffer
+			uniformWrite.dstBinding = 0;
 			uniformWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			uniformWrite.descriptorCount = 1;
 			uniformWrite.pBufferInfo = &uniformBufferInfo;
@@ -144,7 +366,7 @@ namespace DRAW
 			VkWriteDescriptorSet storageWrite = {};
 			storageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			storageWrite.dstSet = vulkanRenderer.descriptorSets[i];
-			storageWrite.dstBinding = 1; // 1 For the storage buffer
+			storageWrite.dstBinding = 1;
 			storageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			storageWrite.descriptorCount = 1;
 			storageWrite.pBufferInfo = &storageBufferInfo;
@@ -152,7 +374,6 @@ namespace DRAW
 			VkWriteDescriptorSet descriptorWrites[] = { uniformWrite, storageWrite };
 			vkUpdateDescriptorSets(vulkanRenderer.device, 2, descriptorWrites, 0, nullptr);
 		}
-
 	}
 
 	void InitializeGraphicsPipeline(entt::registry& registry, entt::entity entity)
@@ -287,17 +508,26 @@ namespace DRAW
 		dynamic_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 		dynamic_create_info.dynamicStateCount = 2;
 		dynamic_create_info.pDynamicStates = dynamic_states;
-
+		Construct_Textures(registry, entity);
 		InitializeDescriptors(registry, entity);
+		VkDescriptorSetLayout setLayouts[2] = {
+	vulkanRenderer.descriptorLayout,    // set=0: buffer set
+	vulkanRenderer.textureSetLayout     // set=1: texture set
+		};
 
 		VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
 		pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipeline_layout_create_info.setLayoutCount = 1;
-		pipeline_layout_create_info.pSetLayouts = &vulkanRenderer.descriptorLayout;
+		pipeline_layout_create_info.setLayoutCount = 2;
+		pipeline_layout_create_info.pSetLayouts = setLayouts;
 		pipeline_layout_create_info.pushConstantRangeCount = 0;
 		pipeline_layout_create_info.pPushConstantRanges = nullptr;
 
-		vkCreatePipelineLayout(vulkanRenderer.device, &pipeline_layout_create_info, nullptr, &vulkanRenderer.pipelineLayout);
+		vkCreatePipelineLayout(
+			vulkanRenderer.device,
+			&pipeline_layout_create_info,
+			nullptr,
+			&vulkanRenderer.pipelineLayout
+		);
 
 		// Pipeline State... (FINALLY) 
 		VkGraphicsPipelineCreateInfo pipeline_create_info = {};
@@ -497,8 +727,19 @@ namespace DRAW
 			registry.emplace<std::vector<GPUInstance>>(entity, instanceData);
 			registry.patch<VulkanGPUInstanceBuffer>(entity);
 
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanRenderer.pipelineLayout, 0, 1, &vulkanRenderer.descriptorSets[frame], 0, nullptr);
-
+			VkDescriptorSet sets[2] = {
+	vulkanRenderer.descriptorSets[frame],
+	vulkanRenderer.textureDescriptorSets[frame]
+			};
+			vkCmdBindDescriptorSets(
+				commandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				vulkanRenderer.pipelineLayout,
+				0,
+				2,
+				sets,
+				0, nullptr
+			);
 			unsigned instance = 0;
 
 			for (std::map<GeometryData, int>::iterator it = geometryData.begin(); it != geometryData.end(); ++it)
@@ -515,19 +756,37 @@ namespace DRAW
 	void Destroy_VulkanRenderer(entt::registry& registry, entt::entity entity)
 	{
 		auto& vulkanRenderer = registry.get<VulkanRenderer>(entity);
-		// wait till everything has completed
 		vkDeviceWaitIdle(vulkanRenderer.device);
-		// Remove Buffer compontents
+
+		auto destroyTextureVec = [&](std::vector<TextureData>& vec) {
+			for (auto& t : vec) {
+				if (t.imageView != VK_NULL_HANDLE)
+					vkDestroyImageView(vulkanRenderer.device, t.imageView, nullptr);
+				if (t.image != VK_NULL_HANDLE)
+					vkDestroyImage(vulkanRenderer.device, t.image, nullptr);
+				if (t.memory != VK_NULL_HANDLE)
+					vkFreeMemory(vulkanRenderer.device, t.memory, nullptr);
+			}
+			vec.clear();
+			};
+		destroyTextureVec(vulkanRenderer.textures);
+		destroyTextureVec(vulkanRenderer.texturesNormal);
+		destroyTextureVec(vulkanRenderer.texturesEmissive);
+		destroyTextureVec(vulkanRenderer.texturesAlpha);
+		destroyTextureVec(vulkanRenderer.texturesSpecular);
+		if (vulkanRenderer.textureSetLayout)
+			vkDestroyDescriptorSetLayout(vulkanRenderer.device, vulkanRenderer.textureSetLayout, nullptr);
+
+		if (vulkanRenderer.textureSampler)
+			vkDestroySampler(vulkanRenderer.device, vulkanRenderer.textureSampler, nullptr);
 		registry.remove<VulkanIndexBuffer>(entity);
 		registry.remove<VulkanVertexBuffer>(entity);
 		registry.remove<VulkanGPUInstanceBuffer>(entity);
 		registry.remove<VulkanUniformBuffer>(entity);
 
-
 		vkDestroyDescriptorSetLayout(vulkanRenderer.device, vulkanRenderer.descriptorLayout, nullptr);
 		vkDestroyDescriptorPool(vulkanRenderer.device, vulkanRenderer.descriptorPool, nullptr);
 
-		// Release allocated shaders & pipeline
 		vkDestroyShaderModule(vulkanRenderer.device, vulkanRenderer.vertexShader, nullptr);
 		vkDestroyShaderModule(vulkanRenderer.device, vulkanRenderer.fragmentShader, nullptr);
 		vkDestroyPipelineLayout(vulkanRenderer.device, vulkanRenderer.pipelineLayout, nullptr);

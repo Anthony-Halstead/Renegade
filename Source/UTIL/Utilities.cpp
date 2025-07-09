@@ -63,4 +63,5 @@ namespace UTIL
 			registry.get<GAME::Transform>(entity).matrix = registry.get<DRAW::GPUInstance>(registry.get<DRAW::MeshCollection>(entity).entities[0]).transform;
 		}
 	}
+
 } // namespace UTIL

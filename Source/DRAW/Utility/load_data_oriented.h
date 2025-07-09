@@ -44,9 +44,14 @@ public:
 	{
 		unsigned modelIndex, transformStart, transformCount, flags; // flags optional
 	};
-	struct MATERIAL_TEXTURES // swaps string pointers for loaded texture offsets
+	struct MATERIAL_TEXTURES
 	{
-		unsigned int albedoIndex, roughnessIndex, metalIndex, normalIndex;
+		unsigned int albedoIndex;
+		unsigned int normalIndex;
+		unsigned int emissiveIndex;
+		unsigned int alphaIndex;
+		unsigned int displacementIndex;
+		unsigned int specularIndex;
 	};
 	struct BLENDER_OBJECT // *NEW* Used to track individual objects in blender
 	{
@@ -72,11 +77,11 @@ public:
 	std::vector<MODEL_INSTANCES> levelInstances;
 	// *NEW* each item from the blender scene graph
 	std::vector<BLENDER_OBJECT> blenderObjects;
-	
+
 	// Imports the default level txt format and collects all .h2b data
-	bool LoadLevel(	const char* gameLevelPath, 
-					const char* h2bFolderPath, 
-					GW::SYSTEM::GLog log) {
+	bool LoadLevel(const char* gameLevelPath,
+		const char* h2bFolderPath,
+		GW::SYSTEM::GLog log) {
 		// What this does:
 		// Parse GameLevel.json
 		// For each model found in the file...
@@ -150,9 +155,9 @@ private:
 		}
 	};
 	// internal helper for reading the game level
-	bool ReadGameLevel(const char* gameLevelPath, 
-						std::set<MODEL_ENTRY> &outModels,
-						GW::SYSTEM::GLog log) {
+	bool ReadGameLevel(const char* gameLevelPath,
+		std::set<MODEL_ENTRY>& outModels,
+		GW::SYSTEM::GLog log) {
 		log.LogCategorized("MESSAGE", "Begin Reading Game Level Text File.");
 		GW::SYSTEM::GFile file;
 		file.Create();
@@ -164,7 +169,7 @@ private:
 
 		unsigned int fileSize = 0;
 		file.GetFileSize(gameLevelPath, fileSize); // need fileSize to make sure I don't blow the solution up while still getting all the info I need. TODO: Find a way to optimize this.
-		char* jsonFile = new char[fileSize+1]{0};
+		char* jsonFile = new char[fileSize + 1] {0};
 		file.Read(jsonFile, fileSize); // Unsure if I have to close this.
 
 		nlohmann::json GameLevelData = nlohmann::json::parse(jsonFile);
@@ -194,7 +199,7 @@ private:
 					add.boundary[i].y = EntityData["bounds"][i][1];
 					add.boundary[i].z = EntityData["bounds"][i][2];
 				}
-			
+
 
 				std::string bounds = "Boundary: Left ";
 				bounds += std::to_string(add.boundary[0].x) +
@@ -234,9 +239,9 @@ private:
 		return true;
 	}
 	// internal helper for collecting all .h2b data into unified arrays
-	bool ReadAndCombineH2Bs(const char* h2bFolderPath, 
-							const std::set<MODEL_ENTRY>& modelSet,
-							GW::SYSTEM::GLog log) {
+	bool ReadAndCombineH2Bs(const char* h2bFolderPath,
+		const std::set<MODEL_ENTRY>& modelSet,
+		GW::SYSTEM::GLog log) {
 		log.LogCategorized("MESSAGE", "Begin Importing .H2B File Data.");
 		// parse each model adding to overall arrays
 		H2B::Parser p; // reads the .h2b format
@@ -296,8 +301,8 @@ private:
 				levelInstances.push_back(instances);
 				// *NEW* Add an entry for each unique blender object
 				int offset = 0;
-				for (auto &n : i->blenderNames) {
-					BLENDER_OBJECT obj {
+				for (auto& n : i->blenderNames) {
+					BLENDER_OBJECT obj{
 						level_strings.insert(n).first->c_str(),
 						instances.modelIndex, instances.transformStart + offset++
 					};

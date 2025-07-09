@@ -206,7 +206,13 @@ namespace AI
 		{
 			registry.emplace_or_replace<GAME::GameOver>(entity);
 			std::cout << "You win, good job!" << std::endl;
-		}		
+			auto scoreView = registry.view<GAME::Score>();
+			if (!scoreView.empty()) {
+				auto scoreEnt = scoreView.front();
+				std::cout << "Final Score: " << registry.get<GAME::Score>(scoreEnt).score << std::endl;
+				std::cout << "High Score: " << registry.get<GAME::Score>(scoreEnt).highScore << std::endl;
+			}
+		}
 	}
 	void UpdateEnemyAttack(entt::registry& R)
 	{

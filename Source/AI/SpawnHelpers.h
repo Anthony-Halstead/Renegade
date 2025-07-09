@@ -89,6 +89,7 @@ namespace AI
 		R.emplace<GAME::Health>(enemyBoss, bossHealth);
 		R.emplace<GAME::Transform>(enemyBoss, enemyTransform);
 		R.emplace<GAME::SpawnEnemies>(enemyBoss, 5.0f);
+		R.emplace<GAME::PriorFrameData>(enemyBoss, GAME::PriorFrameData{ bossHealth });
 
 		UTIL::CreateDynamicObjects(R, enemyBoss, enemyBossModel);
 	}

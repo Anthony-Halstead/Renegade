@@ -1,6 +1,7 @@
 #include "GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../DRAW/DrawComponents.h"
+#include "../AUDIO/AudioSystem.h"
 #include "../CCL.h"
 
 namespace GAME
@@ -27,6 +28,20 @@ namespace GAME
 			registry.emplace<Score>(entity, score);
 			auto& scoreComponent = registry.get<Score>(entity);
 			scoreComponent.highScore = score;
+		}
+	}
+
+	void DisplayFinalScores(entt::registry& registry)
+	{
+		entt::basic_view scoreManager = registry.view<Score>();
+		for (auto ent : scoreManager)
+		{
+			if (!registry.any_of<ScoreDisplayed>(ent)) {
+				auto& scoreComponent = registry.get<Score>(ent);
+				std::cout << "Final Score: " << scoreComponent.score << std::endl;
+				std::cout << "High Score: " << scoreComponent.highScore << std::endl;
+				registry.emplace<ScoreDisplayed>(ent);
+			}
 		}
 	}
 
@@ -91,6 +106,11 @@ namespace GAME
 			// update prior frame data to reflect current frame
 			registry.get<PriorFrameData>(ent).pHealth = registry.get<Health>(ent).health;
 		}
+
+		auto bossesLeft = registry.view<Enemy_Boss>();
+		if (bossesLeft.empty()) {
+			AUDIO::AudioSystem::PlayMusicTrack("win");
+		}
 	}
 
 	void MonitorEnemyHealth(entt::registry& registry)
@@ -108,7 +128,7 @@ namespace GAME
 	// Update method
 	static void Update_GameState(entt::registry& registry, entt::entity entity) 
 	{
-		if (!registry.any_of<GameOver>(entity)) 
+		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			MonitorPlayerHealth(registry);
 			// ScoreEvent(registry, "Player", "score");
@@ -117,7 +137,7 @@ namespace GAME
 		}
 		else
 		{
-
+			DisplayFinalScores(registry);
 		}
 	}
 

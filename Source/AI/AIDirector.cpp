@@ -204,14 +204,8 @@ namespace AI
 		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
 		if (enemiesLeft.empty())
 		{
-			registry.emplace_or_replace<GAME::GameOver>(entity);
+			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
 			std::cout << "You win, good job!" << std::endl;
-			auto scoreView = registry.view<GAME::Score>();
-			if (!scoreView.empty()) {
-				auto scoreEnt = scoreView.front();
-				std::cout << "Final Score: " << registry.get<GAME::Score>(scoreEnt).score << std::endl;
-				std::cout << "High Score: " << registry.get<GAME::Score>(scoreEnt).highScore << std::endl;
-			}
 		}
 	}
 	void UpdateEnemyAttack(entt::registry& R)
@@ -254,14 +248,14 @@ namespace AI
 	}	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
-		if (!registry.any_of<GAME::GameOver>(entity))
+		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			UpdateEnemies(registry, entity);
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);
 			UpdateEnemyAttack(registry);
 			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);
-		}		
+		}
 	}
 
 

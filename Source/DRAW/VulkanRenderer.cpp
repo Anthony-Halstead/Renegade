@@ -523,7 +523,6 @@ namespace DRAW
 		registry.remove<VulkanGPUInstanceBuffer>(entity);
 		registry.remove<VulkanUniformBuffer>(entity);
 
-
 		vkDestroyDescriptorSetLayout(vulkanRenderer.device, vulkanRenderer.descriptorLayout, nullptr);
 		vkDestroyDescriptorPool(vulkanRenderer.device, vulkanRenderer.descriptorPool, nullptr);
 

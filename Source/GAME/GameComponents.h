@@ -13,6 +13,7 @@ namespace GAME
 	struct Destroy {};
 	struct Hit {};
 	struct GameOver {};
+	struct ScoreDisplayed {};
 
 	///*** Components ***///
 	struct GameManager {};

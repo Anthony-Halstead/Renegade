@@ -43,6 +43,7 @@ namespace GAME
 		for (auto ent : scoreManager)
 		{
 			UpdateScore(registry, ent, score);
+			// std::cout << "Current Score: " << registry.get<Score>(ent).score << std::endl;
 		}
 	}
 

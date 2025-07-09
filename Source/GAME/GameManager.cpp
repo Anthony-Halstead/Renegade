@@ -7,6 +7,21 @@ namespace GAME
 {
 	// Helper functions
 
+	// This takes in a name and location to update the player score that exists in the game manager.
+	// It also checks whether this score is a new high score and replaces it if so.
+	void UpdateScoreManager(entt::registry& registry, const std::string name, const std::string loc)
+	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::basic_view scoreManager = registry.view<Score>();
+		for (auto scoreEnt : scoreManager)
+		{
+			auto& score = registry.get<Score>(scoreEnt);
+			score.score += (*config).at(name).at(loc).as<unsigned>();
+			if (score.score > score.highScore) score.highScore = score.score;
+		}
+	}
+
 	void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
 	{
 		GW::MATH::GQUATERNIONF rotation;
@@ -170,7 +185,7 @@ namespace GAME
 							}
 
 							// Show current health of enemy boss
-							std::cout << "Enemy Boss current health: " << registry.get<Health>(otherEnt).health << std::endl;
+							// std::cout << "Enemy Boss current health: " << registry.get<Health>(otherEnt).health << std::endl;
 
 							--registry.get<Health>(otherEnt).health;
 							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("EnemyBoss_Station").at("invulnPeriod").as<float>());
@@ -178,6 +193,11 @@ namespace GAME
 							registry.emplace_or_replace<Destroy>(ent);
 
 							std::cout << "Enemy Boss hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
+							/*auto scoreView = registry.view<Score>();
+							if (!scoreView.empty()) {
+								auto scoreEnt = scoreView.front();
+								std::cout << "Current Score: " << registry.get<Score>(scoreEnt).score << std::endl;
+							} */
 						}
 					}
 
@@ -228,6 +248,12 @@ namespace GAME
 		{
 			registry.emplace<GameOver>(entity);
 			std::cout << "You lose, game over." << std::endl;
+			auto scoreView = registry.view<Score>();
+			if (!scoreView.empty()) {
+				auto scoreEnt = scoreView.front();
+				std::cout << "Final score: " << registry.get<Score>(scoreEnt).score << std::endl;
+				std::cout << "High score: " << registry.get<Score>(scoreEnt).highScore << std::endl;
+			}
 		}
 	}
 

@@ -2,6 +2,10 @@
 #define UTILITIES_H_
 
 #include "GameConfig.h"
+#include "../DRAW/DrawComponents.h"
+#include "../GAME/GameComponents.h"
+
+
 
 namespace UTIL
 {

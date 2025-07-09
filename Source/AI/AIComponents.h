@@ -5,6 +5,7 @@
 
 namespace AI
 {
+
 	struct AIDirector {};
 
 	struct FormationAnchor

@@ -1,4 +1,4 @@
-﻿#include "AIComponents.h"
+#include "AIComponents.h"
 #include "SpawnHelpers.h"
 #include "../GAME/GameComponents.h"
 #include "../UTIL/Utilities.h"
@@ -8,19 +8,17 @@
 
 namespace AI
 {
+	//HELPERS--------------
 	float LengthXZ(const GW::MATH::GVECTORF& v)
 	{
 		return std::sqrt(v.x * v.x + v.z * v.z);
 	}
-
 	void NormalizeXZ(const GW::MATH::GVECTORF& v, GW::MATH::GVECTORF& out)
 	{
 		float len = LengthXZ(v);
 		out = (len > 1e-4f) ? GW::MATH::GVECTORF{ v.x / len, 0, v.z / len, 0 } : GW::MATH::GVECTORF{ 0,0,0,0 };
 	}
-
 	constexpr float DegToRad(float d) { return d * 0.0174532925f; }
-
 	void YawToward(const GW::MATH::GVECTORF& desired, GW::MATH::GVECTORF& forward, float maxStepRad)
 	{
 		GW::MATH::GVECTORF d = { desired.x,0,desired.z,0 };
@@ -40,7 +38,6 @@ namespace AI
 		float c = std::cos(step), s = std::sin(step);
 		forward = { f.x * c - f.z * s, 0, f.x * s + f.z * c, 0 };
 	}
-
 	FormationType RandomFormationType()
 	{
 		static std::mt19937 rng{ std::random_device{}() };
@@ -58,6 +55,73 @@ namespace AI
 
 		std::uniform_int_distribution<std::size_t> dist(0, kinds.size() - 1);
 		return kinds[dist(rng)];
+	}
+
+
+	void UpdateBossOneBehavior(entt::registry& registry, entt::entity& entity)
+	{
+		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+		entt::basic_view enemies = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
+
+		for (auto ent : enemies)
+		{
+			GAME::Health hp = registry.get<GAME::Health>(ent);
+
+			auto& spawn = registry.get<GAME::SpawnEnemies>(ent);
+			spawn.spawnTimer -= (float)deltaTime;
+
+			entt::entity enemySpawn{};
+
+			if (spawn.spawnTimer <= 0.0f)
+			{
+				spawn.spawnTimer = 20.0f;
+				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+				unsigned int bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned int>();
+
+				if (bossHealth)
+				{
+					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
+
+					auto& bossTransform = registry.get<GAME::Transform>(ent);
+					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+
+					SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+				}
+
+				if (hp.health <= 0)
+				{
+					registry.emplace<GAME::Destroy>(ent);
+					registry.remove<GAME::SpawnEnemies>(ent);
+					registry.remove<GAME::Enemy_Boss>(ent);
+					std::cout << "Enemy Boss defeated!" << std::endl;
+				}
+
+				entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
+
+				for (auto ent : lesserEnemies)
+				{
+					GAME::Health hp = registry.get<GAME::Health>(ent);
+
+					if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
+				}
+			}
+		}
+
+		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
+
+		if (enemiesLeft.empty())
+		{
+			registry.emplace<GAME::GameOver>(entity);
+			std::cout << "You win, good job!" << std::endl;
+		}
+	}
+	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity& entity)
+	{
+
+	}
+	void UpdateBossThreeBehavior(entt::registry& registry, entt::entity& entity)
+	{
+
 	}
 
 	void Initialize(entt::registry& registry)
@@ -133,6 +197,7 @@ namespace AI
 				vel = { 0,0,0,0 };
 		}
 	}
+
 	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
 	{
 		auto view = registry.view<GAME::Invulnerability>();
@@ -208,8 +273,8 @@ namespace AI
 			std::cout << "You win, good job!" << std::endl;
 		}
 	}
-	void UpdateEnemyAttack(entt::registry& R)
-	{
+
+	void UpdateStandardProjectile(entt::registry& R) {
 		const double dt = R.ctx().get<UTIL::DeltaTime>().dtSec;
 		const auto& cfg = *R.ctx().get<UTIL::Config>().gameConfig;
 		const float rate = cfg.at("Enemy1").at("firerate").as<float>();
@@ -245,7 +310,8 @@ namespace AI
 
 			fire->cooldown = rate;
 		}
-	}	
+
+	}
 	void Update(entt::registry& registry, entt::entity entity)
 	{
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
@@ -253,7 +319,7 @@ namespace AI
 			UpdateEnemies(registry, entity);
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);
-			UpdateEnemyAttack(registry);
+			UpdateStandardProjectile(registry);
 			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);
 		}
 	}

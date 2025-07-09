@@ -40,11 +40,21 @@ namespace DRAW
 		VkPipelineLayout pipelineLayout = nullptr;
 		GW::MATH::GMATRIXF projMatrix;
 		VkDescriptorSetLayout descriptorLayout = nullptr;
-		VkDescriptorSetLayout textureDescriptorLayout = nullptr;
 		VkDescriptorPool descriptorPool = nullptr;
 		std::vector<VkDescriptorSet> descriptorSets;
+
+		VkDescriptorSetLayout textureSetLayout;
+		VkDescriptorSet textureDescriptorSet;
+		std::vector<VkDescriptorSet> textureDescriptorSets;
+		std::vector<VkDescriptorSetLayout>textureSetLayouts;
+		VkSampler textureSampler = VK_NULL_HANDLE;
 		VkClearValue clrAndDepth[2];
-		std::vector<DRAW::TextureData> textures;
+
+		std::vector<TextureData> textures;
+		std::vector<TextureData> texturesNormal;
+		std::vector<TextureData> texturesEmissive;
+		std::vector<TextureData> texturesAlpha;
+		std::vector<TextureData> texturesSpecular;
 	};
 
 	struct VulkanVertexBuffer
@@ -66,11 +76,16 @@ namespace DRAW
 			return indexStart < a.indexStart;
 		}
 	};
-	
+
 	struct GPUInstance
 	{
 		GW::MATH::GMATRIXF	transform;
 		H2B::ATTRIBUTES		matData;
+		uint32_t albedoIndex;
+		uint32_t normalIndex;
+		uint32_t emissiveIndex;
+		uint32_t alphaIndex;
+		uint32_t specularIndex;
 	};
 
 	struct VulkanGPUInstanceBuffer
@@ -96,7 +111,7 @@ namespace DRAW
 	struct Camera
 	{
 		GW::MATH::GMATRIXF camMatrix;
-	};	
+	};
 
 
 	struct CPULevel {

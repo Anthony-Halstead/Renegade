@@ -24,6 +24,9 @@ int main()
 	// All components, tags, and systems are stored in a single registry
 	entt::registry registry;
 
+
+	entt::locator<entt::registry>::reset(&registry,[](entt::registry*) {});
+
 	// initialize the ECS Component Logic
 	CCL::InitializeComponentLogic(registry);
 
@@ -110,6 +113,8 @@ void GraphicsBehavior(entt::registry& registry)
 		DRAW::VulkanRendererInitialization{
 			vertShader, pixelShader,
 			{ {0.2f, 0.2f, 0.25f, 1} } , { 1.0f, 0u }, 75.f, 0.1f, 100.0f });
+
+
 	registry.emplace<DRAW::VulkanRenderer>(display);
 
 	registry.emplace<DRAW::GPULevel>(display);
@@ -127,9 +132,9 @@ void GraphicsBehavior(entt::registry& registry)
 
 	// Create a camera and emplace it
 	GW::MATH::GMATRIXF initialCamera;
-	GW::MATH::GVECTORF translate = { 0.0f,  45.0f, -5.0f };
+	GW::MATH::GVECTORF translate = { 0.0f,45.0f, 0.0f };
 	GW::MATH::GVECTORF lookat = { 0.0f, 0.0f, 0.0f };
-	GW::MATH::GVECTORF up = { 0.0f, 1.0f, 0.0f };
+	GW::MATH::GVECTORF up = { 0.0f, 0.0f, 1.0f };
 	GW::MATH::GMatrix::TranslateGlobalF(initialCamera, translate, initialCamera);
 	GW::MATH::GMatrix::LookAtLHF(translate, lookat, up, initialCamera);
 	// Inverse to turn it into a camera matrix, not a view matrix. This will let us do
@@ -166,8 +171,12 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Transform>(player, playerTransform);
+
+	registry.emplace<GAME::Bounded>(player);
+
 	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
 	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });
+
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
 }

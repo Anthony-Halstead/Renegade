@@ -24,6 +24,9 @@ int main()
 	// All components, tags, and systems are stored in a single registry
 	entt::registry registry;
 
+
+	entt::locator<entt::registry>::reset(&registry,[](entt::registry*) {});
+
 	// initialize the ECS Component Logic
 	CCL::InitializeComponentLogic(registry);
 
@@ -146,8 +149,10 @@ void GameplayBehavior(entt::registry& registry)
 {
 	entt::entity player = registry.create();
 	entt::entity gameManager = registry.create();
+	entt::entity stateManager = registry.create();
 
 	registry.emplace<GAME::GameManager>(gameManager);
+	registry.emplace<GAME::StateManager>(stateManager);
 	registry.emplace<GAME::Player>(player);
 
 	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
@@ -166,7 +171,13 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Transform>(player, playerTransform);
+
 	registry.emplace<GAME::Bounded>(player);
+
+	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
+	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });
+
+
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
 }
 
@@ -191,6 +202,7 @@ void MainLoopBehavior(entt::registry& registry)
 
 		registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
 		registry.patch<AI::AIDirector>(registry.view<AI::AIDirector>().front());
+		registry.patch<GAME::StateManager>(registry.view<GAME::StateManager>().front());
 		registry.patch<AUDIO::MusicHandle>(registry.view<AUDIO::MusicHandle>().front());
 
 		closedCount = 0;

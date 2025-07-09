@@ -24,6 +24,9 @@ int main()
 	// All components, tags, and systems are stored in a single registry
 	entt::registry registry;
 
+
+	entt::locator<entt::registry>::reset(&registry,[](entt::registry*) {});
+
 	// initialize the ECS Component Logic
 	CCL::InitializeComponentLogic(registry);
 

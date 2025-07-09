@@ -2,10 +2,37 @@
 #include "../UTIL/Utilities.h"
 #include "../DRAW/DrawComponents.h"
 #include "../CCL.h"
+#include "../APP/Window.hpp"
 
 namespace GAME
 {
 	// Helper functions
+
+	void UpdateClampToScreen(entt::registry& registry)
+	{
+		auto wView = registry.view<APP::Window>();
+		if (wView.empty()) return;
+		const auto& window = wView.get<APP::Window>(*wView.begin());
+
+		float halfWidth = static_cast<float>(window.width) / 23.0f;
+		float halfHeight = static_cast<float>(window.height) / 23.0f;
+
+		float minX = -halfWidth;
+		float maxX = halfWidth;
+		float minZ = -halfHeight;
+		float maxZ = halfHeight;
+
+		auto v = registry.view<GAME::Transform, GAME::Bounded>();
+		for (auto e : v)
+		{
+			auto& M = v.get<GAME::Transform>(e).matrix;
+			if (M.row4.x < minX)   M.row4.x = minX;
+			if (M.row4.x > maxX)   M.row4.x = maxX;
+			if (M.row4.z < minZ)   M.row4.z = minZ;
+			if (M.row4.z > maxZ)   M.row4.z = maxZ;
+		}
+	}
+
 
 	void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
 	{
@@ -221,9 +248,11 @@ namespace GAME
 
 	void Update(entt::registry& registry, entt::entity entity)
 	{
+		//RefreshBoundsFromWindow(registry);
 		if (!registry.any_of<GameOver>(entity))
 		{
 			UpdatePosition(registry);
+			UpdateClampToScreen(registry);
 			UpdateCollide(registry);
 			UpdateHit(registry);
 			UpdatePlayers(registry, entity);
@@ -233,6 +262,7 @@ namespace GAME
 
 	CONNECT_COMPONENT_LOGIC()
 	{
+		//registry.on_construct<GameManager>().connect<InitialiseBounds>();
 		registry.on_update<GameManager>().connect<Update>();
 	};
 }

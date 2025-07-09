@@ -14,9 +14,14 @@ namespace GAME
 	struct Hit {};
 	struct GameOver {};
 
+	struct BoundsManager
+	{
+		int left, right, bottom, top;
+	};
+	struct Bounded {};
 	///*** Components ***///
 	struct GameManager {};
-	
+
 	struct Transform {
 		GW::MATH::GMATRIXF matrix;
 	};
@@ -32,6 +37,7 @@ namespace GAME
 			Attacking
 		} state;
 	};
+
 
 	struct Firing {
 		float cooldown;

@@ -4,6 +4,9 @@
 
 namespace DRAW
 {
+
+
+
 	void Construct_CPULevel(entt::registry& registry, entt::entity entity) {
 		CPULevel& cpuLevel = registry.get<CPULevel>(entity);
 
@@ -14,6 +17,7 @@ namespace DRAW
 
 		if (!success) throw std::runtime_error("DEBUG: Unable to load the level data to the CPU.");
 	};
+
 
 	void Construct_GPULevel(entt::registry& registry, entt::entity entity) {
 		CPULevel& cpuLevel = registry.get<CPULevel>(entity);
@@ -53,9 +57,20 @@ namespace DRAW
 					model.vertexStart
 					});
 
+				auto materialIndex = mesh.materialIndex + model.materialStart;
+				auto attrib = level.levelMaterials[materialIndex].attrib;
+				const Level_Data::MATERIAL_TEXTURES& textures = level.levelTextures[materialIndex];
+
+				attrib.albedoIndex = textures.albedoIndex;
+
 				registry.emplace<GPUInstance>(ent, GPUInstance{
 					level.levelTransforms[obj.transformIndex],
-					level.levelMaterials[mesh.materialIndex + model.materialStart].attrib
+					attrib,
+					textures.albedoIndex,
+					textures.normalIndex,
+					textures.emissiveIndex,
+					textures.alphaIndex,
+					textures.specularIndex
 					});
 			}
 			if (model.isCollidable)

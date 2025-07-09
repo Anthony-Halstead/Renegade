@@ -16,9 +16,11 @@ void Update(entt::registry& registry, entt::entity entity) {
 	float speed = playerStats.at("speed").as<float>();
 	float fireRate = playerStats.at("firerate").as<float>();
 
-	Movement(registry, entity, deltaTime, speed);
-	Shoot(registry, entity, deltaTime, fireRate);
-	Invulnerability(registry, entity, deltaTime);
+	if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front())) {
+		Movement(registry, entity, deltaTime, speed);
+		Shoot(registry, entity, deltaTime, fireRate);
+		Invulnerability(registry, entity, deltaTime);
+	}
 }
 
 void Invulnerability(entt::registry& registry, entt::entity& entity, const float& deltaTime) {

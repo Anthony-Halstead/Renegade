@@ -1,6 +1,7 @@
 #include "GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../DRAW/DrawComponents.h"
+#include "../AUDIO/AudioSystem.h"
 #include "../CCL.h"
 #include "../APP/Window.hpp"
 
@@ -258,14 +259,10 @@ namespace GAME
 
 		if (deathCount == players.size())
 		{
-			registry.emplace<GameOver>(entity);
+			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
 			std::cout << "You lose, game over." << std::endl;
-			auto scoreView = registry.view<Score>();
-			if (!scoreView.empty()) {
-				auto scoreEnt = scoreView.front();
-				std::cout << "Final score: " << registry.get<Score>(scoreEnt).score << std::endl;
-				std::cout << "High score: " << registry.get<Score>(scoreEnt).highScore << std::endl;
-			}
+
+			AUDIO::AudioSystem::PlayMusicTrack("lose");
 		}
 	}
 
@@ -277,9 +274,9 @@ namespace GAME
 
 	void Update(entt::registry& registry, entt::entity entity)
 	{
-		//RefreshBoundsFromWindow(registry);
-		if (!registry.any_of<GameOver>(entity))
+		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
+      //RefreshBoundsFromWindow(registry);
 			UpdatePosition(registry);
 			UpdateClampToScreen(registry);
 			UpdateCollide(registry);

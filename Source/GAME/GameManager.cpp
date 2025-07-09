@@ -153,20 +153,42 @@ namespace GAME
 
 					// Bullets hit enemy
 					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) && !registry.any_of<Hit>(otherEnt))
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy>(otherEnt) && !registry.any_of<Hit>(otherEnt))
 						{
-							//// Prevent self-hit
-							//if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-							//	if (owner->owner == otherEnt) {
-							//		// This bullet belongs to this enemy, skip
-							//		continue;
-							//	}
-							//}
+							// Prevent self-hit
+							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+								if (owner->owner == otherEnt || registry.any_of<Enemy>(otherEnt)) {
+									// This bullet belongs to this enemy, skip
+									continue;
+								}
+							}
+							// Show current health of enemy
+							std::cout << "Enemy current health: " << registry.get<Health>(otherEnt).health << std::endl;
+							--registry.get<Health>(otherEnt).health;
+							registry.emplace<Hit>(otherEnt);
+							registry.emplace_or_replace<Destroy>(ent);
+							std::cout << "Enemy hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
+						}
+					}
+
+					// Bullets hit enemy boss
+					{
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) 
+							&& !registry.any_of<Hit>(otherEnt) && !registry.any_of<Invulnerability>(otherEnt))
+						{
+							// Prevent self-hit
+							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+								if (owner->owner == otherEnt || registry.any_of<Enemy_Boss>(otherEnt)) {
+									// This bullet belongs to this enemy, skip
+									continue;
+								}
+							}
 
 							// Show current health of enemy boss
 							// std::cout << "Enemy Boss current health: " << registry.get<Health>(otherEnt).health << std::endl;
 
 							--registry.get<Health>(otherEnt).health;
+							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("EnemyBoss_Station").at("invulnPeriod").as<float>());
 							registry.emplace<Hit>(otherEnt);
 							registry.emplace_or_replace<Destroy>(ent);
 
@@ -191,7 +213,6 @@ namespace GAME
 				}
 				else
 				{
-					// Destroy bullet after 5 seconds
 					if (registry.any_of<Bullet>(ent) && !registry.any_of<Destroy>(ent))
 					{
 						auto& bullet = registry.get<Bullet>(ent);
@@ -199,7 +220,6 @@ namespace GAME
 						if (bullet.lifetime <= 0.0f)
 						{
 							registry.emplace<Destroy>(ent);
-							std::cout << "Bullet destroyed after lifetime expired." << std::endl;
 						}
 					}
 				}

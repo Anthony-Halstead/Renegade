@@ -74,6 +74,7 @@ void Shoot(entt::registry& registry, entt::entity& entity, const float& deltaTim
 		{
 			entt::entity bullet = registry.create();
 			registry.emplace<GAME::Bullet>(bullet);
+			registry.emplace<GAME::BulletOwner>(bullet, entity);
 			std::string bulletModel = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("model").as<std::string>();
 			float bulletSpeed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("speed").as<float>();
 

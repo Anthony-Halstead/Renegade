@@ -17,6 +17,7 @@ void AudioBehavior(entt::registry& registry);
 void AIBehavior(entt::registry& registry);
 void MainLoopBehavior(entt::registry& registry);
 
+enum class AppState { Splash, MainMenu, Settings, Credits, Scores, GameLoop };
 // Architecture is based on components/entities pushing updates to other components/entities (via "patch" function)
 int main()
 {
@@ -25,7 +26,7 @@ int main()
 	entt::registry registry;
 
 
-	entt::locator<entt::registry>::reset(&registry,[](entt::registry*) {});
+	entt::locator<entt::registry>::reset(&registry, [](entt::registry*) {});
 
 	// initialize the ECS Component Logic
 	CCL::InitializeComponentLogic(registry);
@@ -38,11 +39,9 @@ int main()
 	registry.ctx().emplace<DRAW::ModelManager>();
 
 	GraphicsBehavior(registry); // create windows, surfaces, and renderers
-
-	GameplayBehavior(registry); // create entities and components for gameplay
-
 	AudioBehavior(registry); //Create audio manager
 
+	GameplayBehavior(registry); // create entities and components for gameplay
 	AIBehavior(registry); //Create AI Director
 
 	MainLoopBehavior(registry); // update windows and input
@@ -185,32 +184,34 @@ void GameplayBehavior(entt::registry& registry)
 // It will be responsible for updating any created windows and handling any input
 void MainLoopBehavior(entt::registry& registry)
 {
-	// main loop
-	int closedCount; // count of closed windows
-	auto winView = registry.view<APP::Window>(); // for updating all windows
+	AppState state = AppState::GameLoop;
+	double splashDuration = 10.0;
+	auto splashStart = std::chrono::steady_clock::now();
+
+	int closedCount;
+	auto winView = registry.view<APP::Window>();
 	auto& deltaTime = registry.ctx().emplace<UTIL::DeltaTime>().dtSec;
-	// for updating all windows
-	do
-	{
-		// Set the delta time
-		static auto start = std::chrono::steady_clock::now();
-		double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
-		start = std::chrono::steady_clock::now();
-		// Cap delta time to min 30 fps. This will prevent too much time from simulating when dragging the window
+
+	do {
+		static auto frameStart = std::chrono::steady_clock::now();
+		double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - frameStart).count();
+		frameStart = std::chrono::steady_clock::now();
 		if (elapsed > 1.0 / 30.0) elapsed = 1.0 / 30.0;
 		deltaTime = elapsed;
+
+		closedCount = 0;
+
 
 		registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
 		registry.patch<AI::AIDirector>(registry.view<AI::AIDirector>().front());
 		registry.patch<GAME::StateManager>(registry.view<GAME::StateManager>().front());
 		registry.patch<AUDIO::MusicHandle>(registry.view<AUDIO::MusicHandle>().front());
 
-		closedCount = 0;
-		// find all Windows that are not closed and call "patch" to update them
 		for (auto entity : winView)
 		{
 			if (registry.any_of<APP::WindowClosed>(entity)) ++closedCount;
-			else registry.patch<APP::Window>(entity); // calls on_update()
+			else registry.patch<APP::Window>(entity);
 		}
-	} while (winView.size() != closedCount); // exit when all windows are closed
+
+	} while (winView.size() != closedCount);
 }

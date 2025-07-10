@@ -7,34 +7,36 @@
 
 namespace GAME
 {
-    // helpers
-    static PickupType WeightedPick(const ItemDropConfig& c)
-    {
-        const float total = c.weights[0] + c.weights[1] + c.weights[2];
-        float r = static_cast<float>(rand()) / RAND_MAX * total;
-        if ((r -= c.weights[0]) < 0) return PickupType::Health;
-        if ((r -= c.weights[1]) < 0) return PickupType::Shield;
-        return PickupType::Weapon;
-    }
+	// helpers
+	static PickupType WeightedPick(const ItemDropConfig& c)
+	{
+		const float total = c.weights[0] + c.weights[1] + c.weights[2];
+		float r = static_cast<float>(rand()) / RAND_MAX * total;
+		if ((r -= c.weights[0]) < 0) return PickupType::Health;
+		if ((r -= c.weights[1]) < 0) return PickupType::Shield;
+		return PickupType::Weapon;
+	}
 
-    // callback when an Enemy entity is destroyed
-    static void OnEnemyDestroyed(entt::registry& reg, entt::entity dead)
-    {
-        const auto& cfg = ItemDropConfig::Get();
+	// callback when an Enemy entity is destroyed
+	static void OnEnemyDestroyed(entt::registry& reg, entt::entity dead)
+	{
+		const auto& cfg = ItemDropConfig::Get();
 
-        // 80% of kills no drop
-        if (static_cast<float>(rand()) / RAND_MAX > cfg.dropChance)
-            return;
+		// 80% of kills no drop
+		if (static_cast<float>(rand()) / RAND_MAX > cfg.dropChance)
+			return;
 
-        // create new pickup entity
-        entt::entity p = reg.create();
-        reg.emplace<ItemPickup>(p);
-        reg.emplace<PickupData>(p, PickupData{ WeightedPick(cfg) });
-        reg.emplace<PickupVelocity>(p, PickupVelocity{ -cfg.fallSpeed });
+		// create new pickup entity
+		entt::entity p = reg.create();
+		reg.emplace<ItemPickup>(p);
+		reg.emplace<PickupData>(p, PickupData{ WeightedPick(cfg) });
+		reg.emplace<PickupVelocity>(p, PickupVelocity{ -cfg.fallSpeed });
 
-        // copy world space transform from corpse
-        const auto& corpseXform = reg.get<Transform>(dead).matrix;
-        reg.emplace<Transform>(p, Transform{ corpseXform });
+		// copy world space transform from corpse
+		const auto& corpseXform = reg.get<Transform>(dead).matrix;
+		reg.emplace<Transform>(p, Transform{ corpseXform });
+		auto& pickups = (*reg.ctx().get<UTIL::Config>().gameConfig).at("Pickups");
+
 
         // attach 3D model (using placeholders now)
         std::string modelName;
@@ -45,7 +47,7 @@ namespace GAME
         //}
         //UTIL::CreateDynamicObjects(reg, p, modelName);
 
-        // spawn gentle loop SFX at the item’s position
+        // spawn gentle loop SFX at the itemâ€™s position
         //AUDIO::AudioSystem::PlaySFX("pickupSpawn", corpseXform.row4);
     }
 
@@ -76,4 +78,5 @@ namespace GAME
         // run UpdatePickups once per frame by piggy backing on the GameManager update
         //registry.on_update<GameManager>().connect<&UpdatePickups>();
     }
+
 }

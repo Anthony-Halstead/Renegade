@@ -3,6 +3,7 @@
 // component dependencies
 #include "./Utility/FileIntoString.h"
 #include "../TextureUtils.h"
+#include "../UI/UIComponents.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb_image.h"
@@ -748,6 +749,8 @@ namespace DRAW
 				instance += it->second;
 			}
 		}
+
+		registry.patch<UI::UIManager>(registry.view<UI::UIManager>().front());
 
 		vulkanRenderer.vlkSurface.EndFrame(true);
 	}

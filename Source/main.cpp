@@ -9,12 +9,14 @@
 #include "AUDIO/AudioComponents.h"
 #include "AUDIO/AudioSystem.h"
 #include "AI/AIComponents.h"
+#include "UI/UIComponents.h"
 // Local routines for specific application behavior
 
 void GraphicsBehavior(entt::registry& registry);
 void GameplayBehavior(entt::registry& registry);
 void AudioBehavior(entt::registry& registry);
 void AIBehavior(entt::registry& registry);
+void UIBehavior(entt::registry& registry);
 void MainLoopBehavior(entt::registry& registry);
 
 // Architecture is based on components/entities pushing updates to other components/entities (via "patch" function)
@@ -45,6 +47,8 @@ int main()
 
 	AIBehavior(registry); //Create AI Director
 
+	UIBehavior(registry); // Create UI 
+
 	MainLoopBehavior(registry); // update windows and input
 
 	// clear all entities and components from the registry
@@ -66,6 +70,13 @@ void AIBehavior(entt::registry& registry)
 {
 	auto e = registry.create();
 	registry.emplace<AI::AIDirector>(e);
+}
+void UIBehavior(entt::registry& registry)
+{
+	auto winView = registry.view<GW::SYSTEM::GWindow>();
+	entt::entity window = *winView.begin();
+
+	registry.emplace<UI::UIManager>(window);
 }
 // This function will be called by the main loop to update the graphics
 // It will be responsible for loading the Level, creating the VulkanRenderer, and all VulkanInstances

@@ -39,7 +39,6 @@ namespace APP
 			// update the window's GVulkanSurface if it has one
 			registry.patch<DRAW::VulkanRenderer>(entity);
 		}
-		
 	}
 
 	// Use this MACRO to connect the EnTT Component Logic

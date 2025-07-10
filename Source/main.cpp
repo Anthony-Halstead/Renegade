@@ -183,6 +183,7 @@ void GameplayBehavior(entt::registry& registry)
 	registry.emplace<GAME::Transform>(player, playerTransform);
 
 	registry.emplace<GAME::Bounded>(player);
+	registry.emplace<GAME::Gaming>(gameManager);
 
 	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
 	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });

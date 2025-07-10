@@ -5,8 +5,6 @@
 namespace DRAW
 {
 
-
-
 	void Construct_CPULevel(entt::registry& registry, entt::entity entity) {
 		CPULevel& cpuLevel = registry.get<CPULevel>(entity);
 

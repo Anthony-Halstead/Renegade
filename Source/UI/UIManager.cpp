@@ -29,7 +29,7 @@ namespace UI
 		auto& window = registry.get<APP::Window>(entity);
 		auto& ui = registry.get<UIManager>(entity);
 		
-		ui.blitter->ClearColor(0x80000000);
+		ui.blitter->ClearColor(0x0);
 		
 		std::string scoreText = "Score";
 		ui.font->DrawTextImmediate(0, 24, scoreText.c_str(), scoreText.size());
@@ -39,10 +39,10 @@ namespace UI
 		ui.blitter->ExportResult(false, window.width, window.height, 0, 0, color_pix, nullptr, nullptr);
 		
 		//Edit pixels here
-		for (int i = 0; i < window.width * window.height; i++)
-		{
-			color_pix[i] = 0xFF7000000;
-		}
+		//for (int i = 0; i < window.width * window.height; i++)
+		//{
+		//	color_pix[i] = 0xFF7000000;
+		//}
 		
 		ui.overlay->Unlock();
 		ui.overlay->TransferOverlay();

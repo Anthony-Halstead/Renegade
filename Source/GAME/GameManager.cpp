@@ -1,6 +1,7 @@
 #include "GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../DRAW/DrawComponents.h"
+#include "../AUDIO/AudioSystem.h"
 #include "../CCL.h"
 #include "../APP/Window.hpp"
 
@@ -169,7 +170,7 @@ namespace GAME
 						{
 							// Prevent self-hit
 							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt || registry.any_of<Enemy>(otherEnt)) {
+								if (owner->owner == otherEnt || !registry.any_of<Player>(owner->owner)) {
 									// This bullet belongs to this enemy, skip
 									continue;
 								}
@@ -190,14 +191,11 @@ namespace GAME
 						{
 							// Prevent self-hit
 							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt || registry.any_of<Enemy_Boss>(otherEnt)) {
+								if (owner->owner == otherEnt || !registry.any_of<Player>(owner->owner)) {
 									// This bullet belongs to this enemy, skip
 									continue;
 								}
 							}
-
-							// Show current health of enemy boss
-							// std::cout << "Enemy Boss current health: " << registry.get<Health>(otherEnt).health << std::endl;
 
 							--registry.get<Health>(otherEnt).health;
 							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("EnemyBoss_Station").at("invulnPeriod").as<float>());
@@ -210,6 +208,27 @@ namespace GAME
 								auto scoreEnt = scoreView.front();
 								std::cout << "Current Score: " << registry.get<Score>(scoreEnt).score << std::endl;
 							} */
+						}
+					}
+
+					// Bullets hit Player from Enemy
+					{
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Player>(otherEnt) 
+							&& !registry.any_of<Hit>(otherEnt) && !registry.any_of<Invulnerability>(otherEnt))
+						{
+							// Prevent self-hit
+							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
+								if (owner->owner == otherEnt) {
+									// This bullet belongs to this Player, skip
+									continue;
+								}
+							}
+
+							--registry.get<Health>(otherEnt).health;
+							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("Player").at("invulnPeriod").as<float>());
+							registry.emplace<Hit>(otherEnt);
+							registry.emplace_or_replace<Destroy>(ent);
+							std::cout << "Player hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
 						}
 					}
 
@@ -258,14 +277,10 @@ namespace GAME
 
 		if (deathCount == players.size())
 		{
-			registry.emplace<GameOver>(entity);
+			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
 			std::cout << "You lose, game over." << std::endl;
-			auto scoreView = registry.view<Score>();
-			if (!scoreView.empty()) {
-				auto scoreEnt = scoreView.front();
-				std::cout << "Final score: " << registry.get<Score>(scoreEnt).score << std::endl;
-				std::cout << "High score: " << registry.get<Score>(scoreEnt).highScore << std::endl;
-			}
+
+			AUDIO::AudioSystem::PlayMusicTrack("lose");
 		}
 	}
 
@@ -277,9 +292,9 @@ namespace GAME
 
 	void Update(entt::registry& registry, entt::entity entity)
 	{
-		//RefreshBoundsFromWindow(registry);
-		if (!registry.any_of<GameOver>(entity))
+		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
+      //RefreshBoundsFromWindow(registry);
 			UpdatePosition(registry);
 			UpdateClampToScreen(registry);
 			UpdateCollide(registry);

@@ -16,9 +16,11 @@ void Update(entt::registry& registry, entt::entity entity) {
 	float speed = playerStats.at("speed").as<float>();
 	float fireRate = playerStats.at("firerate").as<float>();
 
-	Movement(registry, entity, deltaTime, speed);
-	Shoot(registry, entity, deltaTime, fireRate);
-	Invulnerability(registry, entity, deltaTime);
+	if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front())) {
+		Movement(registry, entity, deltaTime, speed);
+		Shoot(registry, entity, deltaTime, fireRate);
+		Invulnerability(registry, entity, deltaTime);
+	}
 }
 
 void Invulnerability(entt::registry& registry, entt::entity& entity, const float& deltaTime) {
@@ -72,6 +74,7 @@ void Shoot(entt::registry& registry, entt::entity& entity, const float& deltaTim
 		{
 			entt::entity bullet = registry.create();
 			registry.emplace<GAME::Bullet>(bullet);
+			registry.emplace<GAME::BulletOwner>(bullet, entity);
 			std::string bulletModel = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("model").as<std::string>();
 			float bulletSpeed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("speed").as<float>();
 

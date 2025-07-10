@@ -282,7 +282,7 @@ namespace AI
 
 	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
 	{
-		auto view = registry.view<GAME::Invulnerability>();
+		auto view = registry.view<GAME::Enemy_Boss, GAME::Invulnerability>();
 		for (auto ent : view)
 		{
 			auto& invuln = registry.get<GAME::Invulnerability>(ent);
@@ -297,36 +297,44 @@ namespace AI
 	void UpdateEnemies(entt::registry& registry, entt::entity& entity)
 	{
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		entt::basic_view enemies = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
-		entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
+		entt::basic_view activeGame = registry.view<GAME::Gaming>();
+		entt::basic_view bossEnemies = registry.view<GAME::Enemy_Boss>();
+		entt::basic_view lesserEnemies = registry.view<GAME::Enemy>();
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+		unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
+		unsigned int bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
 
-		for (auto ent : enemies)
+		entt::entity bossEntity{};
+
+		for (auto ent : bossEnemies)
 		{
-			GAME::Health hp = registry.get<GAME::Health>(ent);
+			bossEntity = ent;
+		}
 
-			auto& spawn = registry.get<GAME::SpawnEnemies>(ent);
-			spawn.spawnTimer -= (float)deltaTime;
-
-			entt::entity enemySpawn{};
-
-			if (spawn.spawnTimer <= 0.0f)
+		for (auto ent : activeGame)
+		{
+			if (registry.all_of<GAME::SpawnEnemies>(bossEntity))
 			{
-				spawn.spawnTimer = 10.0f;
-				unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
+				auto& spawn = registry.get<GAME::SpawnEnemies>(bossEntity);
+				spawn.spawnTimer -= (float)deltaTime;
 
-				entt::basic_view currentEnemies = registry.view<GAME::Enemy, GAME::Health>();
-
-				if (bossHealth && currentEnemies.begin() == currentEnemies.end())
+				if (spawn.spawnTimer <= 0.0f)
 				{
-					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
+					spawn.spawnTimer = 10.0f;
 
-					auto& bossTransform = registry.get<GAME::Transform>(ent);
-					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+					entt::basic_view currentEnemies = registry.view<GAME::Enemy>();
 
-					SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+					if (bossHealth && currentEnemies.empty())
+					{
+						unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
+
+						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
+						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+
+						SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+					}
 				}
-			}
+			}			
 
 			// Enemy fly off screen
 			const float flyOffDelay = (*config).at("Enemy1").at("flyOffTimer").as<float>();
@@ -360,28 +368,28 @@ namespace AI
 			for (auto ent : lesserEnemies)
 			{
 				GAME::Health hp = registry.get<GAME::Health>(ent);
-
-				if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
+				
+				if (hp.health <= 0)
+				{
+					registry.emplace<GAME::Destroy>(ent);
+				}					
 			}
 
-			if (hp.health <= 0)
+			if (registry.all_of<GAME::Health>(bossEntity))
 			{
-				registry.emplace<GAME::Destroy>(ent);
-				registry.remove<GAME::SpawnEnemies>(ent);
-				registry.remove<GAME::Enemy_Boss>(ent);
-				std::cout << "Enemy Boss defeated!" << std::endl;
-			}
-			else
-			{
-				registry.patch<GAME::Enemy_Boss>(ent);
-			}
-		}
-
-		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
-		if (enemiesLeft.empty())
-		{
-			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
-			std::cout << "You win, good job!" << std::endl;
+				auto& hp = registry.get<GAME::Health>(bossEntity);
+				if (hp.health <= 0)
+				{					
+					registry.emplace<GAME::Destroy>(bossEntity);
+					registry.remove<GAME::SpawnEnemies>(bossEntity);
+					registry.remove<GAME::Enemy_Boss>(bossEntity);
+					std::cout << "Enemy Boss defeated!" << std::endl;
+				}
+				else
+				{
+					registry.patch<GAME::Enemy_Boss>(bossEntity);
+				}
+			}			
 		}
 	}
 
@@ -423,12 +431,44 @@ namespace AI
 		}
 
 	}
+
+	void UpdateAIDestroy(entt::registry& registry)
+	{
+		entt::basic_view destroy = registry.view<GAME::Destroy>();
+		for (auto ent : destroy) registry.destroy(ent);
+	}
 	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
+		static unsigned int bossWaveCount = 0;
+
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			UpdateEnemies(registry, entity);
+			UpdateAIDestroy(registry);
+
+			// Check if boss and enemy views are empty
+			if (registry.view<GAME::Enemy>().empty() && registry.view<GAME::Enemy_Boss>().empty())
+			{
+				// access boss count from defaults.ini file and decrement
+				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+				auto bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
+				//SpawnBoss(registry, "EnemyBoss_UFO");
+
+				if (bossWaveCount < bossCount)
+				{
+					if(bossWaveCount == 0)
+						SpawnBoss(registry, "EnemyBoss_UFO");
+					++bossWaveCount;
+				}
+				else
+				{
+					// All bosses defeated, trigger game over
+					registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
+					std::cout << "You win, good job!" << std::endl;
+				}
+			}
+
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);
 			UpdateStandardProjectile(registry);

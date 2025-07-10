@@ -31,6 +31,7 @@ namespace AI
 		enemyMatrix.row4 = spawnPos;
 		R.emplace<GAME::Transform>(e, enemyMatrix);
 		R.emplace<GAME::Velocity>(e);
+		R.emplace<AI::TimeAtPosition>(e);
 
 		UTIL::CreateDynamicObjects(R, e, eModel);
 

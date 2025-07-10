@@ -3,6 +3,7 @@
 #include "../GAME/GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../CCL.h"
+#include "../APP/Window.hpp"
 #include <random>
 #include <algorithm>
 
@@ -179,11 +180,68 @@ namespace AI
 		double dt = r.ctx().get<UTIL::DeltaTime>().dtSec;
 		float speed = (*r.ctx().get<UTIL::Config>().gameConfig).at("Enemy1").at("speed").as<float>();
 
+		auto wView = r.view<APP::Window>();
+		if (wView.empty()) return;
+		const auto& window = wView.get<APP::Window>(*wView.begin());
+
+		float halfWidth = static_cast<float>(window.width) / 23.0f;
+		float halfHeight = static_cast<float>(window.height) / 23.0f;
+
+		float minX = -halfWidth;
+		float maxX = halfWidth;
+		float minZ = -halfHeight;
+		float maxZ = halfHeight;
+
 		for (auto e : view)
 		{
+			auto& pos = view.get<GAME::Transform>(e).matrix.row4;
+
+			// Enemy flies off screen
+			if (r.any_of<AI::FlyOffScreen>(e))
+			{
+				float speed = (*r.ctx().get<UTIL::Config>().gameConfig).at("Enemy1").at("speed").as<float>();
+				view.get<GAME::Velocity>(e).vec = {speed, 0, 0, 0};
+
+				// Wrap around screen edges
+				if (pos.x < minX)
+				{
+					pos.x = maxX;
+					r.remove<AI::FlyOffScreen>(e);
+					r.emplace_or_replace<AI::ReturningToPosition>(e);
+				}
+				else if (pos.x > maxX)
+				{
+					pos.x = minX;
+					r.remove<AI::FlyOffScreen>(e);
+					r.emplace_or_replace<AI::ReturningToPosition>(e);
+				}
+				continue;
+			}
+
+			// Enemy is returning to position
+			if (r.any_of<AI::ReturningToPosition>(e))
+			{
+				const auto target = view.get<MoveTarget>(e).pos;
+				auto& vel = view.get<GAME::Velocity>(e).vec;
+
+				GW::MATH::GVECTORF delta;
+				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
+
+				if (LengthXZ(delta) < 0.1f)
+				{
+					vel = { 0,0,0,0 };
+					r.remove<AI::ReturningToPosition>(e); // Enemy back in position
+				}
+				else
+				{
+					GW::MATH::GVECTORF dir; NormalizeXZ(delta, dir);
+					GW::MATH::GVector::ScaleF(dir, speed, vel);
+				}
+				continue;
+			}
+
 			const auto& trg = view.get<MoveTarget>(e).pos;
 			auto& vel = view.get<GAME::Velocity>(e).vec;
-			auto& pos = view.get<GAME::Transform>(e).matrix.row4;
 
 			GW::MATH::GVECTORF delta;
 			GW::MATH::GVector::SubtractVectorF(trg, pos, delta);
@@ -196,6 +254,30 @@ namespace AI
 			else
 				vel = { 0,0,0,0 };
 		}
+	}
+
+	void EnemyFlyOffScreen(entt::registry& r)
+	{
+		// Check if any enemies are already flying off screen
+		auto flyView = r.view<AI::FlyOffScreen>();
+		auto returnView = r.view<AI::ReturningToPosition>();
+		if (!flyView.empty() || !returnView.empty()) return;
+
+		// Collect all enemies
+		std::vector<entt::entity> enemies;
+		auto view = r.view<GAME::Enemy, GAME::Transform>();
+		for (auto e : view) enemies.push_back(e);
+
+		if (enemies.empty()) return;
+
+		// Randomly select one enemy
+		static std::mt19937 rng{ std::random_device{}() };
+		std::uniform_int_distribution<std::size_t> dist(0, enemies.size() - 1);
+		entt::entity selectedEnemy = enemies[dist(rng)];
+
+		// Tag to fly off screen
+		if (!r.any_of<AI::FlyOffScreen>(selectedEnemy))
+			r.emplace_or_replace<AI::FlyOffScreen>(selectedEnemy);
 	}
 
 	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
@@ -217,6 +299,7 @@ namespace AI
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
 		entt::basic_view enemies = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
 		entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 
 		for (auto ent : enemies)
 		{
@@ -230,7 +313,6 @@ namespace AI
 			if (spawn.spawnTimer <= 0.0f)
 			{
 				spawn.spawnTimer = 10.0f;
-				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 				unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
 
 				entt::basic_view currentEnemies = registry.view<GAME::Enemy, GAME::Health>();
@@ -243,6 +325,35 @@ namespace AI
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 
 					SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+				}
+			}
+
+			// Enemy fly off screen
+			const float flyOffDelay = (*config).at("Enemy1").at("flyOffTimer").as<float>();
+
+			auto view = registry.view<GAME::Enemy, GAME::Transform, MoveTarget, AI::TimeAtPosition>();
+			for (auto e : view)
+			{
+				auto& pos = registry.get<GAME::Transform>(e).matrix.row4;
+				const auto& target = registry.get<MoveTarget>(e).pos;
+				auto& timer = registry.get<AI::TimeAtPosition>(e);
+
+				// Check if enemy is at or near its target position
+				GW::MATH::GVECTORF delta;
+				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
+				if (LengthXZ(delta) < 0.1f)
+				{
+					timer.timeAtPosition += deltaTime;
+					if (timer.timeAtPosition >= flyOffDelay && !registry.any_of<AI::FlyOffScreen>(e))
+					{
+						EnemyFlyOffScreen(registry);
+						//registry.emplace_or_replace<GAME::FlyOffScreen>(e);
+						timer.timeAtPosition = 0.0f;
+					}
+				}
+				else
+				{
+					timer.timeAtPosition = 0.0f;
 				}
 			}
 
@@ -312,6 +423,7 @@ namespace AI
 		}
 
 	}
+	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))

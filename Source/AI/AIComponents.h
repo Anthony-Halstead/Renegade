@@ -23,5 +23,8 @@ namespace AI
 
 	struct MoveTarget { GW::MATH::GVECTORF pos; };
 	struct CircleTag {};
+	struct TimeAtPosition{ float timeAtPosition = 0.0f; };
+	struct FlyOffScreen {};
+	struct ReturningToPosition {};
 }
 #endif

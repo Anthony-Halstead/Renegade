@@ -5,8 +5,8 @@ newmtl GreenGlow.001
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
-Ke 0.033966 7.000000 0.000000
+Ke 0.068903 14.199999 0.000000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Kd Textures/GreenGlow.png
+map_Kd Textures/BulletEmmisive.png

@@ -4,7 +4,31 @@
 [[vk::binding(3, 1)]] Texture2D gAlphaTextures[];
 [[vk::binding(4, 1)]] Texture2D gSpecularTextures[];
 [[vk::binding(0, 1)]] SamplerState gSampler;
-
+float2 ScrollHorizontal(float2 uv, float time, float speed)
+{
+    return uv + float2(time * speed, 0);
+}
+float2 ScrollVertical(float2 uv, float time, float speed)
+{
+    return uv + float2(0, time * speed);
+}
+float2 RadialExpand(float2 uv, float time, float speed, float2 center)
+{
+    float scale = 1.0 + time * speed;
+    return (uv - center) * scale + center;
+}
+float2 RadialOffset(float2 uv, float time, float speed, float2 center)
+{
+    float2 dir = normalize(uv - center);
+    return uv + dir * (time * speed);
+}
+float2 CircularSweep(float2 uv, float time, float speed, float2 center)
+{
+    float2 offset = uv - center;
+    float angle = atan2(offset.y, offset.x) + time * speed;
+    float r = length(offset);
+    return float2(cos(angle), sin(angle)) * r + center;
+}
 struct OBJ_ATTRIBUTES
 {
     float3 Kd;
@@ -35,8 +59,11 @@ StructuredBuffer<SHADER_MODEL_DATA> SceneData : register(b1);
 
 cbuffer SHADER_SCENE_DATA : register(b0)
 {
+    float time;
+    float3 _pad;
     float4 sunDirection, sunColor, sunAmbient, camPos;
     float4x4 viewMatrix, projectionMatrix;
+    
 };
 
 float4 main(
@@ -48,8 +75,14 @@ float4 main(
 ) : SV_TARGET
 {
     OBJ_ATTRIBUTES mat = SceneData[index].material;
+    float2 uv = uvw.xy;
+    float2 center = float2(.6, .45);
+    if (mat.albedoIndex == 1)
+    {
+        uv = RadialOffset(uv, time, .1, center);
+    }
 
-    float4 albedo = gAlbedoTextures[mat.albedoIndex].Sample(gSampler, uvw.xy);
+    float4 albedo = gAlbedoTextures[mat.albedoIndex].Sample(gSampler, uv);
     float4 normalMap = gNormalTextures[mat.normalIndex].Sample(gSampler, uvw.xy);
     float4 emissive = gEmissiveTextures[mat.emissiveIndex].Sample(gSampler, uvw.xy);
     float4 alphaMap = gAlphaTextures[mat.alphaIndex].Sample(gSampler, uvw.xy);
@@ -74,7 +107,7 @@ float4 main(
         float3 bumpNormal = normalize(float3((left - right), (down - up), bumpStrength));
         N = normalize(lerp(N, bumpNormal, 0.5));
     }
-
+   
     float alpha = mat.d * alphaMap.r;
 
     float3 sunDir = normalize(-sunDirection.xyz);

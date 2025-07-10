@@ -33,8 +33,11 @@ StructuredBuffer<SHADER_MODEL_DATA> SceneData : register(b1);
 
 cbuffer SHADER_SCENE_DATA : register(b0)
 {
+    float time;
+    float3 _pad;
     float4 sunDirection, sunColor, sunAmbient, camPos;
     float4x4 viewMatrix, projectionMatrix;
+    
 };
 
 struct V_OUT

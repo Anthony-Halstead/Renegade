@@ -6,7 +6,7 @@ namespace DRAW
 	void AddSceneData(entt::registry& registry, entt::entity entity)
 	{
 		auto& sceneData = registry.emplace<SceneData>(entity,
-			SceneData{ { 0.0f,-50.0f, -1.0f }, { 0.8f, 0.8f, 0.8f }, { 0.1f, 0.1f, 0.1f } });
+			SceneData{ { 0.0f,-50.0f, -1.0f }, { 3.0f, 3.0f, 3.0f }, { 0.1f, 0.1f, 0.1f } });
 
 		GW::MATH::GVector::NormalizeF(sceneData.sunDirection, sceneData.sunDirection);
 		auto& renderer = registry.get<VulkanRenderer>(entity);

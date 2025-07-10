@@ -9,7 +9,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd New Models/johnathan_ItemPickups/pickupitems_obj/Textures/Ring_BaseColor.png
+map_Kd Textures/Ring_BaseColor.png
 
 newmtl Ring_Emission
 Ns 250.000000
@@ -19,7 +19,7 @@ Ks 0.500000 0.500000 0.500000
 Ni 1.500000
 d 1.000000
 illum 2
-map_Ke New Models/johnathan_ItemPickups/pickupitems_obj/Textures/Ring_Emission.png
+map_Ke Textures/Ring_Emission.png
 
 newmtl Ring_Specular
 Ns 250.000000

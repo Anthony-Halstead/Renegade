@@ -38,42 +38,42 @@ namespace GAME
 
         // attach 3D model (using placeholders now)
         std::string modelName;
-        switch (reg.get<PickupData>(p).type) {
-        case PickupType::Health:  modelName = "assets/models/pickups/health.glb";  break;
-        case PickupType::Shield:  modelName = "assets/models/pickups/shield.glb";  break;
-        case PickupType::Weapon:  modelName = "assets/models/pickups/weapon.glb";  break;
-        }
-        UTIL::CreateDynamicObjects(reg, p, modelName);
+        //switch (reg.get<PickupData>(p).type) {
+        //case PickupType::Health:  modelName = "assets/models/pickups/health.glb";  break;
+        //case PickupType::Shield:  modelName = "assets/models/pickups/shield.glb";  break;
+        //case PickupType::Weapon:  modelName = "assets/models/pickups/weapon.glb";  break;
+        //}
+        //UTIL::CreateDynamicObjects(reg, p, modelName);
 
         // spawn gentle loop SFX at the item’s position
-        AUDIO::AudioSystem::PlaySFX("pickupSpawn", corpseXform.row4);
+        //AUDIO::AudioSystem::PlaySFX("pickupSpawn", corpseXform.row4);
     }
 
     // register callback & per frame updater
-    static void UpdatePickups(entt::registry& r, entt::entity)
-    {
-        const double dt = r.ctx().get<UTIL::DeltaTime>().dtSec;
-        const float  despawnZ = ItemDropConfig::Get().despawnZ;
-
-        auto view = r.view<ItemPickup, PickupVelocity, Transform>();
-        for (auto e : view)
-        {
-            auto& t = view.get<Transform>(e).matrix.row4;
-            const auto  vel = view.get<PickupVelocity>(e).zPerSecond;
-            t.z += vel * static_cast<float>(dt);
-
-            if (t.z < despawnZ)   // fell off screen
-                r.destroy(e);
-        }
-    }
+    //static void UpdatePickups(entt::registry& r, entt::entity)
+    //{
+    //    const double dt = r.ctx().get<UTIL::DeltaTime>().dtSec;
+    //    const float  despawnZ = ItemDropConfig::Get().despawnZ;
+    //
+    //    auto view = r.view<ItemPickup, PickupVelocity, Transform>();
+    //    for (auto e : view)
+    //    {
+    //        auto& t = view.get<Transform>(e).matrix.row4;
+    //        const auto  vel = view.get<PickupVelocity>(e).zPerSecond;
+    //        t.z += vel * static_cast<float>(dt);
+    //    
+    //        if (t.z < despawnZ)   // fell off screen
+    //            r.destroy(e);
+    //    }
+    //}
 
     // hook everything into the ECS
     CONNECT_COMPONENT_LOGIC()
     {
         // drop spawn when *any* Enemy component is removed because the entity is being destroyed
-        registry.on_destroy<Enemy>().connect<&OnEnemyDestroyed>();
+        //registry.on_destroy<Enemy>().connect<&OnEnemyDestroyed>();
 
         // run UpdatePickups once per frame by piggy backing on the GameManager update
-        registry.on_update<GameManager>().connect<&UpdatePickups>();
+        //registry.on_update<GameManager>().connect<&UpdatePickups>();
     }
 }

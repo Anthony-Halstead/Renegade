@@ -170,7 +170,7 @@ namespace GAME
 						{
 							// Prevent self-hit
 							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt) {
+								if (owner->owner == otherEnt || !registry.any_of<Player>(owner->owner)) {
 									// This bullet belongs to this enemy, skip
 									continue;
 								}

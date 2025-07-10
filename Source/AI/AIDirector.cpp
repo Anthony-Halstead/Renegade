@@ -317,7 +317,7 @@ namespace AI
 			fire->cooldown = rate;
 		}
 
-	}	
+	}
 	void Update(entt::registry& registry, entt::entity entity)
 	{
 		if (!registry.any_of<GAME::GameOver>(entity))
@@ -325,9 +325,9 @@ namespace AI
 			UpdateEnemies(registry, entity);
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);
-			UpdateEnemyAttack(registry);
+			UpdateStandardProjectile(registry);
 			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);
-		}		
+		}
 	}
 
 

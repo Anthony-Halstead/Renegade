@@ -589,7 +589,7 @@ namespace DRAW
 			return;
 		}
 
-		vulkanRenderer.clrAndDepth[0].color = initializationData.clearColor;
+		vulkanRenderer.clrAndDepth[0].color = VkClearColorValue{ {0.0f, 0.0f, 0.0f, 1.0f} };
 		vulkanRenderer.clrAndDepth[1].depthStencil = initializationData.depthStencil;
 
 		// Create Projection matrix

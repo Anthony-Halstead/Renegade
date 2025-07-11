@@ -203,11 +203,6 @@ namespace GAME
 							registry.emplace_or_replace<Destroy>(ent);
 
 							std::cout << "Enemy Boss hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
-							/*auto scoreView = registry.view<Score>();
-							if (!scoreView.empty()) {
-								auto scoreEnt = scoreView.front();
-								std::cout << "Current Score: " << registry.get<Score>(scoreEnt).score << std::endl;
-							} */
 						}
 					}
 

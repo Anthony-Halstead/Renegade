@@ -3,6 +3,7 @@
 #include "BLIT_Font.h"
 #include "../DRAW/DrawComponents.h"
 #include "../APP/Window.hpp"
+#include "../GAME/GameComponents.h"
 #include "shaderc/shaderc.h" // needed for compiling shaders at runtime
 #ifdef _WIN32 // must use MT platform DLL libraries on windows
 #pragma comment(lib, "shaderc_combined.lib") 
@@ -31,8 +32,12 @@ namespace UI
 		
 		ui.blitter->ClearColor(0x0);
 		
-		std::string scoreText = "Score";
+		auto& scoreComponent = registry.get<GAME::Score>(registry.view<GAME::Score>().front());
+		std::string scoreText = "Score " + std::to_string(scoreComponent.score);
 		ui.font->DrawTextImmediate(0, 24, scoreText.c_str(), scoreText.size());
+
+		std::string highScoreText = "High Score " + std::to_string(scoreComponent.highScore);
+		ui.font->DrawTextImmediate(0, 48, highScoreText.c_str(), highScoreText.size());
 		
 		unsigned int* color_pix;
 		ui.overlay->LockForUpdate(window.width * window.height, &color_pix);

@@ -2,11 +2,17 @@
 #include "../UTIL/Utilities.h"
 #include "../DRAW/DrawComponents.h"
 #include "../AUDIO/AudioSystem.h"
+#include "../UI/UIComponents.h"
 #include "../CCL.h"
 
 namespace GAME
 {
 	// Helper functions
+
+	void DisplayScores(entt::registry& registry, std::string score, std::string hScore)
+	{
+		// registry.patch<UI::UIManager>(registry.view<UI::UIManager>().front());
+	}
 
 	// This updates the player score and checks if it is a new high score.
 	// If the score component does not exist, it creates one with the initial score.
@@ -38,8 +44,10 @@ namespace GAME
 		{
 			if (!registry.any_of<ScoreDisplayed>(ent)) {
 				auto& scoreComponent = registry.get<Score>(ent);
+				/// Debug
 				std::cout << "Final Score: " << scoreComponent.score << std::endl;
 				std::cout << "High Score: " << scoreComponent.highScore << std::endl;
+				///
 				registry.emplace<ScoreDisplayed>(ent);
 			}
 		}
@@ -58,7 +66,11 @@ namespace GAME
 		for (auto ent : scoreManager)
 		{
 			UpdateScore(registry, ent, score);
+			DisplayScores(registry, std::to_string(score), std::to_string(registry.get<Score>(ent).highScore));
+			///// Debug
+			// std::cout << "Score updated by: " << score << " from entity: " << name << std::endl;
 			// std::cout << "Current Score: " << registry.get<Score>(ent).score << std::endl;
+			/////
 		}
 	}
 
@@ -70,7 +82,9 @@ namespace GAME
 		{
 			if (registry.get<Health>(ent).health < registry.get<PriorFrameData>(ent).pHealth) {
 				// communicate to UI or other systems that player has been hit
+				/// Debug
 				std::cout << "Player has been hit! Current health: " << registry.get<Health>(ent).health << " down from: " << registry.get<PriorFrameData>(ent).pHealth << std::endl;
+				///
 			}
 			// update prior frame data to reflect current frame
 			registry.get<PriorFrameData>(ent).pHealth = registry.get<Health>(ent).health;
@@ -87,11 +101,15 @@ namespace GAME
 				if (registry.any_of<BossTitle>(ent)) {
 					std::string bossName = registry.get<BossTitle>(ent).name;
 					ScoreEvent(registry, bossName, "scorePerHP");
+					///// Debug
+					// std::cout << "Boss has been hit! Current health: " << registry.get<Health>(ent).health << " down from: " << registry.get<PriorFrameData>(ent).pHealth << std::endl;
+					/////
 				}
 				else {
+					/// Debug
 					std::cout << "Boss has been hit, but no name was provided, no score awarded " << std::endl;
+					///
 				}
-				// std::cout << "Boss has been hit! Current health: " << registry.get<Health>(ent).health << " down from: " << registry.get<PriorFrameData>(ent).pHealth << std::endl;
 			}
 			if (registry.get<Health>(ent).health <= 0) {
 				// communicate to UI or other systems that boss has been defeated
@@ -100,16 +118,13 @@ namespace GAME
 					ScoreEvent(registry, bossName, "score");
 				}
 				else {
+					/// Debug
 					std::cout << "Boss defeated, but no name was provided, no score awarded " << std::endl;
+					///
 				}
 			}
 			// update prior frame data to reflect current frame
 			registry.get<PriorFrameData>(ent).pHealth = registry.get<Health>(ent).health;
-		}
-
-		auto bossesLeft = registry.view<Enemy_Boss>();
-		if (bossesLeft.empty()) {
-			AUDIO::AudioSystem::PlayMusicTrack("win");
 		}
 	}
 

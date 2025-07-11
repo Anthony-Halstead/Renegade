@@ -111,6 +111,7 @@ namespace GAME
 					///
 				}
 			}
+			/// this is never going to work here
 			if (registry.get<Health>(ent).health <= 0) {
 				// communicate to UI or other systems that boss has been defeated
 				if (registry.any_of<BossTitle>(ent)) {
@@ -133,6 +134,7 @@ namespace GAME
 		entt::basic_view enemies = registry.view<Enemy, Health>();
 		for (auto ent : enemies)
 		{
+			/// This is never going to work here
 			if (registry.get<Health>(ent).health <= 0) {
 				// communicate to UI or other systems that enemy has been defeated
 				ScoreEvent(registry, "Enemy1", "score");

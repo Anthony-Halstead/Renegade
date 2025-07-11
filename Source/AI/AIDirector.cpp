@@ -236,7 +236,7 @@ namespace AI
 					auto& bossTransform = registry.get<GAME::Transform>(ent);
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 					SpawnFlock(registry, 20, bossPos);
-					//SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+					SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
 				}
 
 				if (hp.health <= 0)
@@ -332,7 +332,7 @@ namespace AI
 			if (r.any_of<AI::FlyOffScreen>(e))
 			{
 				float speed = (*r.ctx().get<UTIL::Config>().gameConfig).at("Enemy1").at("speed").as<float>();
-				view.get<GAME::Velocity>(e).vec = {speed, 0, 0, 0};
+				view.get<GAME::Velocity>(e).vec = { speed, 0, 0, 0 };
 
 				// Wrap around screen edges
 				if (pos.x < minX)
@@ -356,18 +356,17 @@ namespace AI
 				const auto target = view.get<MoveTarget>(e).pos;
 				auto& vel = view.get<GAME::Velocity>(e).vec;
 
-				GW::MATH::GVECTORF delta;
-				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
-
-				if (LengthXZ(delta) < 0.1f)
+				if (UTIL::Distance(target, pos) < 0.1f)
 				{
 					vel = { 0,0,0,0 };
 					r.remove<AI::ReturningToPosition>(e); // Enemy back in position
 				}
 				else
 				{
-					GW::MATH::GVECTORF dir; NormalizeXZ(delta, dir);
-					GW::MATH::GVector::ScaleF(dir, speed, vel);
+					GW::MATH::GVECTORF delta;
+					GW::MATH::GVector::SubtractVectorF(target, pos, delta);
+					GW::MATH::GVector::NormalizeF(delta, delta);
+					GW::MATH::GVector::ScaleF(delta, speed, vel);
 				}
 				continue;
 			}
@@ -463,17 +462,13 @@ namespace AI
 
 						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
 						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+						SpawnFlock(registry, 20, bossPos);
+						SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
 
 
-					auto& bossTransform = registry.get<GAME::Transform>(ent);
-					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-					SpawnFlock(registry, 20, bossPos);
-					//SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
-
-					
 					}
 				}
-			}			
+			}
 
 			// Enemy fly off screen
 			const float flyOffDelay = (*config).at("Enemy1").at("flyOffTimer").as<float>();
@@ -485,10 +480,8 @@ namespace AI
 				const auto& target = registry.get<MoveTarget>(e).pos;
 				auto& timer = registry.get<AI::TimeAtPosition>(e);
 
-				// Check if enemy is at or near its target position
-				GW::MATH::GVECTORF delta;
-				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
-				if (LengthXZ(delta) < 0.1f)
+
+				if (UTIL::Distance(target, pos) < 0.1f)
 				{
 					timer.timeAtPosition += deltaTime;
 					if (timer.timeAtPosition >= flyOffDelay && !registry.any_of<AI::FlyOffScreen>(e))
@@ -508,18 +501,18 @@ namespace AI
 			for (auto ent : lesserEnemies)
 			{
 				GAME::Health hp = registry.get<GAME::Health>(ent);
-				
+
 				if (hp.health <= 0)
 				{
 					registry.emplace<GAME::Destroy>(ent);
-				}					
+				}
 			}
 
 			if (registry.all_of<GAME::Health>(bossEntity))
 			{
 				auto& hp = registry.get<GAME::Health>(bossEntity);
 				if (hp.health <= 0)
-				{					
+				{
 					registry.emplace<GAME::Destroy>(bossEntity);
 					registry.remove<GAME::SpawnEnemies>(bossEntity);
 					registry.remove<GAME::Enemy_Boss>(bossEntity);
@@ -529,7 +522,7 @@ namespace AI
 				{
 					registry.patch<GAME::Enemy_Boss>(bossEntity);
 				}
-			}			
+			}
 		}
 	}
 
@@ -578,7 +571,7 @@ namespace AI
 		entt::basic_view destroy = registry.view<GAME::Destroy>();
 		for (auto ent : destroy) registry.destroy(ent);
 	}
-	
+
 	void Update(entt::registry& registry, entt::entity entity)
 	{
 		static unsigned int bossWaveCount = 0;
@@ -602,7 +595,7 @@ namespace AI
 
 				if (bossWaveCount < bossCount)
 				{
-					if(bossWaveCount == 0)
+					if (bossWaveCount == 0)
 						SpawnBoss(registry, "EnemyBoss_UFO");
 					++bossWaveCount;
 				}

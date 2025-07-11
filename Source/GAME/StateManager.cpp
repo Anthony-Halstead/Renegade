@@ -9,10 +9,10 @@ namespace GAME
 {
 	// Helper functions
 
-	void DisplayScores(entt::registry& registry, std::string score, std::string hScore)
-	{
-		// registry.patch<UI::UIManager>(registry.view<UI::UIManager>().front());
-	}
+	//void DisplayScores(entt::registry& registry, std::string score, std::string hScore)
+	//{
+	//	// registry.patch<UI::UIManager>(registry.view<UI::UIManager>().front());
+	//}
 
 	// This updates the player score and checks if it is a new high score.
 	// If the score component does not exist, it creates one with the initial score.
@@ -66,11 +66,11 @@ namespace GAME
 		for (auto ent : scoreManager)
 		{
 			UpdateScore(registry, ent, score);
-			DisplayScores(registry, std::to_string(score), std::to_string(registry.get<Score>(ent).highScore));
-			///// Debug
-			// std::cout << "Score updated by: " << score << " from entity: " << name << std::endl;
-			// std::cout << "Current Score: " << registry.get<Score>(ent).score << std::endl;
-			/////
+			//DisplayScores(registry, std::to_string(score), std::to_string(registry.get<Score>(ent).highScore));
+			/*/// Debug
+			 std::cout << "Score updated by: " << score << " from entity: " << name << std::endl;
+			 std::cout << "Current Score: " << registry.get<Score>(ent).score << std::endl;
+			///*/
 		}
 	}
 
@@ -111,7 +111,6 @@ namespace GAME
 					///
 				}
 			}
-			/// this is never going to work here
 			if (registry.get<Health>(ent).health <= 0) {
 				// communicate to UI or other systems that boss has been defeated
 				if (registry.any_of<BossTitle>(ent)) {
@@ -134,7 +133,6 @@ namespace GAME
 		entt::basic_view enemies = registry.view<Enemy, Health>();
 		for (auto ent : enemies)
 		{
-			/// This is never going to work here
 			if (registry.get<Health>(ent).health <= 0) {
 				// communicate to UI or other systems that enemy has been defeated
 				ScoreEvent(registry, "Enemy1", "score");

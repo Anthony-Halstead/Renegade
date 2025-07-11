@@ -101,7 +101,6 @@ namespace DRAW
 		float _pad[3];
 		GW::MATH::GVECTORF sunDirection, sunColor, sunAmbient, camPos;
 		GW::MATH::GMATRIXF viewMatrix, projectionMatrix;
-
 	};
 
 	struct VulkanUniformBuffer

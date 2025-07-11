@@ -35,5 +35,16 @@ namespace UTIL
 	/// Creates a normalized vector pointing in a random direction on the X/Z plane
 	GW::MATH::GVECTORF GetRandomVelocityVector();
 
+	GW::MATH::GVECTORF RandomPointInWindowXZ(entt::registry& registry, float marginOffset = 30.f);
+
+	float Distance(const GW::MATH::GVECTORF& a, const GW::MATH::GVECTORF& b);
+
+	bool RotateTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetPosition, float step);
+
+	bool MoveTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetPosition, float step);
+
+	bool ScaleTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetScale, float step);
+	void Scale(GAME::Transform& transform, float scale);
+
 } // namespace UTIL
 #endif // !UTILITIES_H_

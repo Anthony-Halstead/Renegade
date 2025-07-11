@@ -4,6 +4,7 @@
 [[vk::binding(3, 1)]] Texture2D gAlphaTextures[];
 [[vk::binding(4, 1)]] Texture2D gSpecularTextures[];
 [[vk::binding(0, 1)]] SamplerState gSampler;
+
 float2 ScrollHorizontal(float2 uv, float time, float speed)
 {
     return uv + float2(time * speed, 0);
@@ -29,6 +30,7 @@ float2 CircularSweep(float2 uv, float time, float speed, float2 center)
     float r = length(offset);
     return float2(cos(angle), sin(angle)) * r + center;
 }
+
 struct OBJ_ATTRIBUTES
 {
     float3 Kd;
@@ -77,9 +79,10 @@ float4 main(
     OBJ_ATTRIBUTES mat = SceneData[index].material;
     float2 uv = uvw.xy;
     float2 center = float2(.6, .45);
+   
     if (mat.albedoIndex == 1)
     {
-        uv = RadialOffset(uv, time, .1, center);
+        uv = ScrollHorizontal(uv, time, .1);
     }
 
     float4 albedo = gAlbedoTextures[mat.albedoIndex].Sample(gSampler, uv);

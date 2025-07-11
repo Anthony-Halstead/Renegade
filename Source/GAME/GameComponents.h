@@ -16,16 +16,12 @@ namespace GAME
 	struct ScoreDisplayed {};
 	struct Gaming {}; // used to show active game session to allow for spawning of new bosses more easily
 
-	struct BoundsManager
-	{
-		int left, right, bottom, top;
-	};
 	struct Bounded {};
 	///*** Components ***///
 	struct GameManager {};
 
 	struct StateManager {};
-	
+
 	struct Transform {
 		GW::MATH::GMATRIXF matrix;
 	};

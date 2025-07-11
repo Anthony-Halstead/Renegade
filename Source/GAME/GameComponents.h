@@ -14,6 +14,7 @@ namespace GAME
 	struct Hit {};
 	struct GameOver {};
 	struct ScoreDisplayed {};
+	struct Gaming {}; // used to show active game session to allow for spawning of new bosses more easily
 
 	struct Bounded {};
 	///*** Components ***///

@@ -3,6 +3,7 @@
 // component dependencies
 #include "./Utility/FileIntoString.h"
 #include "../TextureUtils.h"
+#include "../UI/UIComponents.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb_image.h"
@@ -749,6 +750,8 @@ namespace DRAW
 			}
 		}
 
+		registry.patch<UI::UIManager>(registry.view<UI::UIManager>().front());
+
 		vulkanRenderer.vlkSurface.EndFrame(true);
 	}
 
@@ -791,6 +794,8 @@ namespace DRAW
 		vkDestroyShaderModule(vulkanRenderer.device, vulkanRenderer.fragmentShader, nullptr);
 		vkDestroyPipelineLayout(vulkanRenderer.device, vulkanRenderer.pipelineLayout, nullptr);
 		vkDestroyPipeline(vulkanRenderer.device, vulkanRenderer.pipeline, nullptr);
+		
+		registry.remove<UI::UIManager>(registry.view<UI::UIManager>().front());
 	}
 
 	// Use this MACRO to connect the EnTT Component Logic

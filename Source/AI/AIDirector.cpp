@@ -3,6 +3,7 @@
 #include "../GAME/GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../CCL.h"
+#include "../APP/Window.hpp"
 #include <random>
 #include <algorithm>
 
@@ -311,11 +312,68 @@ namespace AI
 		double dt = r.ctx().get<UTIL::DeltaTime>().dtSec;
 		float speed = (*r.ctx().get<UTIL::Config>().gameConfig).at("Enemy1").at("speed").as<float>();
 
+		auto wView = r.view<APP::Window>();
+		if (wView.empty()) return;
+		const auto& window = wView.get<APP::Window>(*wView.begin());
+
+		float halfWidth = static_cast<float>(window.width) / 23.0f;
+		float halfHeight = static_cast<float>(window.height) / 23.0f;
+
+		float minX = -halfWidth;
+		float maxX = halfWidth;
+		float minZ = -halfHeight;
+		float maxZ = halfHeight;
+
 		for (auto e : view)
 		{
+			auto& pos = view.get<GAME::Transform>(e).matrix.row4;
+
+			// Enemy flies off screen
+			if (r.any_of<AI::FlyOffScreen>(e))
+			{
+				float speed = (*r.ctx().get<UTIL::Config>().gameConfig).at("Enemy1").at("speed").as<float>();
+				view.get<GAME::Velocity>(e).vec = {speed, 0, 0, 0};
+
+				// Wrap around screen edges
+				if (pos.x < minX)
+				{
+					pos.x = maxX;
+					r.remove<AI::FlyOffScreen>(e);
+					r.emplace_or_replace<AI::ReturningToPosition>(e);
+				}
+				else if (pos.x > maxX)
+				{
+					pos.x = minX;
+					r.remove<AI::FlyOffScreen>(e);
+					r.emplace_or_replace<AI::ReturningToPosition>(e);
+				}
+				continue;
+			}
+
+			// Enemy is returning to position
+			if (r.any_of<AI::ReturningToPosition>(e))
+			{
+				const auto target = view.get<MoveTarget>(e).pos;
+				auto& vel = view.get<GAME::Velocity>(e).vec;
+
+				GW::MATH::GVECTORF delta;
+				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
+
+				if (LengthXZ(delta) < 0.1f)
+				{
+					vel = { 0,0,0,0 };
+					r.remove<AI::ReturningToPosition>(e); // Enemy back in position
+				}
+				else
+				{
+					GW::MATH::GVECTORF dir; NormalizeXZ(delta, dir);
+					GW::MATH::GVector::ScaleF(dir, speed, vel);
+				}
+				continue;
+			}
+
 			const auto& trg = view.get<MoveTarget>(e).pos;
 			auto& vel = view.get<GAME::Velocity>(e).vec;
-			auto& pos = view.get<GAME::Transform>(e).matrix.row4;
 
 			GW::MATH::GVECTORF delta;
 			GW::MATH::GVector::SubtractVectorF(trg, pos, delta);
@@ -331,9 +389,33 @@ namespace AI
 		}
 	}
 
+	void EnemyFlyOffScreen(entt::registry& r)
+	{
+		// Check if any enemies are already flying off screen
+		auto flyView = r.view<AI::FlyOffScreen>();
+		auto returnView = r.view<AI::ReturningToPosition>();
+		if (!flyView.empty() || !returnView.empty()) return;
+
+		// Collect all enemies
+		std::vector<entt::entity> enemies;
+		auto view = r.view<GAME::Enemy, GAME::Transform>();
+		for (auto e : view) enemies.push_back(e);
+
+		if (enemies.empty()) return;
+
+		// Randomly select one enemy
+		static std::mt19937 rng{ std::random_device{}() };
+		std::uniform_int_distribution<std::size_t> dist(0, enemies.size() - 1);
+		entt::entity selectedEnemy = enemies[dist(rng)];
+
+		// Tag to fly off screen
+		if (!r.any_of<AI::FlyOffScreen>(selectedEnemy))
+			r.emplace_or_replace<AI::FlyOffScreen>(selectedEnemy);
+	}
+
 	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
 	{
-		auto view = registry.view<GAME::Invulnerability>();
+		auto view = registry.view<GAME::Enemy_Boss, GAME::Invulnerability>();
 		for (auto ent : view)
 		{
 			auto& invuln = registry.get<GAME::Invulnerability>(ent);
@@ -348,62 +430,106 @@ namespace AI
 	void UpdateEnemies(entt::registry& registry, entt::entity& entity)
 	{
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		entt::basic_view enemies = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
-		entt::basic_view lesserEnemies = registry.view<GAME::Enemy, GAME::Health>();
+		entt::basic_view activeGame = registry.view<GAME::Gaming>();
+		entt::basic_view bossEnemies = registry.view<GAME::Enemy_Boss>();
+		entt::basic_view lesserEnemies = registry.view<GAME::Enemy>();
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+		unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
+		unsigned int bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
 
-		for (auto ent : enemies)
+		entt::entity bossEntity{};
+
+		for (auto ent : bossEnemies)
 		{
-			GAME::Health hp = registry.get<GAME::Health>(ent);
+			bossEntity = ent;
+		}
 
-			auto& spawn = registry.get<GAME::SpawnEnemies>(ent);
-			spawn.spawnTimer -= (float)deltaTime;
-
-			entt::entity enemySpawn{};
-
-			if (spawn.spawnTimer <= 0.0f)
+		for (auto ent : activeGame)
+		{
+			if (registry.all_of<GAME::SpawnEnemies>(bossEntity))
 			{
-				spawn.spawnTimer = 10.0f;
-				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-				unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
+				auto& spawn = registry.get<GAME::SpawnEnemies>(bossEntity);
+				spawn.spawnTimer -= (float)deltaTime;
 
-				entt::basic_view currentEnemies = registry.view<GAME::Enemy, GAME::Health>();
-
-				if (bossHealth && currentEnemies.begin() == currentEnemies.end())
+				if (spawn.spawnTimer <= 0.0f)
 				{
-					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
+					spawn.spawnTimer = 10.0f;
+
+					entt::basic_view currentEnemies = registry.view<GAME::Enemy>();
+
+					if (bossHealth && currentEnemies.empty())
+					{
+						unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
+
+						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
+						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+
 
 					auto& bossTransform = registry.get<GAME::Transform>(ent);
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 					SpawnFlock(registry, 20, bossPos);
 					//SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+
+					
+					}
+				}
+			}			
+
+			// Enemy fly off screen
+			const float flyOffDelay = (*config).at("Enemy1").at("flyOffTimer").as<float>();
+
+			auto view = registry.view<GAME::Enemy, GAME::Transform, MoveTarget, AI::TimeAtPosition>();
+			for (auto e : view)
+			{
+				auto& pos = registry.get<GAME::Transform>(e).matrix.row4;
+				const auto& target = registry.get<MoveTarget>(e).pos;
+				auto& timer = registry.get<AI::TimeAtPosition>(e);
+
+				// Check if enemy is at or near its target position
+				GW::MATH::GVECTORF delta;
+				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
+				if (LengthXZ(delta) < 0.1f)
+				{
+					timer.timeAtPosition += deltaTime;
+					if (timer.timeAtPosition >= flyOffDelay && !registry.any_of<AI::FlyOffScreen>(e))
+					{
+						EnemyFlyOffScreen(registry);
+						//registry.emplace_or_replace<GAME::FlyOffScreen>(e);
+						timer.timeAtPosition = 0.0f;
+					}
+				}
+				else
+				{
+					timer.timeAtPosition = 0.0f;
+
 				}
 			}
 
 			for (auto ent : lesserEnemies)
 			{
 				GAME::Health hp = registry.get<GAME::Health>(ent);
-
-				if (hp.health <= 0) registry.emplace<GAME::Destroy>(ent);
+				
+				if (hp.health <= 0)
+				{
+					registry.emplace<GAME::Destroy>(ent);
+				}					
 			}
 
-			if (hp.health <= 0)
+			if (registry.all_of<GAME::Health>(bossEntity))
 			{
-				registry.emplace<GAME::Destroy>(ent);
-				registry.remove<GAME::SpawnEnemies>(ent);
-				registry.remove<GAME::Enemy_Boss>(ent);
-				std::cout << "Enemy Boss defeated!" << std::endl;
-			}
-			else
-			{
-				registry.patch<GAME::Enemy_Boss>(ent);
-			}
-		}
-
-		entt::basic_view enemiesLeft = registry.view<GAME::Enemy_Boss>();
-		if (enemiesLeft.empty())
-		{
-			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
-			std::cout << "You win, good job!" << std::endl;
+				auto& hp = registry.get<GAME::Health>(bossEntity);
+				if (hp.health <= 0)
+				{					
+					registry.emplace<GAME::Destroy>(bossEntity);
+					registry.remove<GAME::SpawnEnemies>(bossEntity);
+					registry.remove<GAME::Enemy_Boss>(bossEntity);
+					std::cout << "Enemy Boss defeated!" << std::endl;
+				}
+				else
+				{
+					registry.patch<GAME::Enemy_Boss>(bossEntity);
+				}
+			}			
 		}
 	}
 
@@ -446,13 +572,48 @@ namespace AI
 		}
 
 	}
+
+	void UpdateAIDestroy(entt::registry& registry)
+	{
+		entt::basic_view destroy = registry.view<GAME::Destroy>();
+		for (auto ent : destroy) registry.destroy(ent);
+	}
+	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
+		static unsigned int bossWaveCount = 0;
+
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			UpdateEnemies(registry, entity);
+
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);
+
+			UpdateAIDestroy(registry);
+
+			// Check if boss and enemy views are empty
+			if (registry.view<GAME::Enemy>().empty() && registry.view<GAME::Enemy_Boss>().empty())
+			{
+				// access boss count from defaults.ini file and decrement
+				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+				auto bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
+				//SpawnBoss(registry, "EnemyBoss_UFO");
+
+				if (bossWaveCount < bossCount)
+				{
+					if(bossWaveCount == 0)
+						SpawnBoss(registry, "EnemyBoss_UFO");
+					++bossWaveCount;
+				}
+				else
+				{
+					// All bosses defeated, trigger game over
+					registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
+					std::cout << "You win, good job!" << std::endl;
+				}
+			}
+
 			UpdateFormation(registry);
 
 			UpdateLocomotion(registry);

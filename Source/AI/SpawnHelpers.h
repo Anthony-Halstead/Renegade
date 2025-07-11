@@ -29,6 +29,7 @@ namespace AI
 		enemyMatrix.row4 = spawnPos;
 		R.emplace<GAME::Transform>(e, enemyMatrix);
 		R.emplace<GAME::Velocity>(e);
+		R.emplace<AI::TimeAtPosition>(e);
 
 		UTIL::CreateDynamicObjects(R, e, eModel);
 
@@ -128,6 +129,9 @@ namespace AI
 	{
 		entt::entity enemyBoss = R.create();
 		R.emplace<GAME::Enemy_Boss>(enemyBoss);
+
+		R.emplace<GAME::BossTitle>(enemyBoss, GAME::BossTitle{ name });
+
 		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
 		std::string enemyBossModel = (*config).at(name).at("model").as<std::string>();
 		unsigned bossHealth = (*config).at(name).at("hitpoints").as<unsigned>();

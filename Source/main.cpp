@@ -9,12 +9,14 @@
 #include "AUDIO/AudioComponents.h"
 #include "AUDIO/AudioSystem.h"
 #include "AI/AIComponents.h"
+#include "UI/UIComponents.h"
 // Local routines for specific application behavior
 
 void GraphicsBehavior(entt::registry& registry);
 void GameplayBehavior(entt::registry& registry);
 void AudioBehavior(entt::registry& registry);
 void AIBehavior(entt::registry& registry);
+void UIBehavior(entt::registry& registry);
 void MainLoopBehavior(entt::registry& registry);
 
 enum class AppState { Splash, MainMenu, Settings, Credits, Scores, GameLoop };
@@ -44,6 +46,8 @@ int main()
 	GameplayBehavior(registry); // create entities and components for gameplay
 	AIBehavior(registry); //Create AI Director
 
+	UIBehavior(registry); // Create UI 
+
 	MainLoopBehavior(registry); // update windows and input
 
 	// clear all entities and components from the registry
@@ -65,6 +69,13 @@ void AIBehavior(entt::registry& registry)
 {
 	auto e = registry.create();
 	registry.emplace<AI::AIDirector>(e);
+}
+void UIBehavior(entt::registry& registry)
+{
+	auto winView = registry.view<GW::SYSTEM::GWindow>();
+	entt::entity window = *winView.begin();
+
+	registry.emplace<UI::UIManager>(window);
 }
 // This function will be called by the main loop to update the graphics
 // It will be responsible for loading the Level, creating the VulkanRenderer, and all VulkanInstances
@@ -172,6 +183,7 @@ void GameplayBehavior(entt::registry& registry)
 	registry.emplace<GAME::Transform>(player, playerTransform);
 
 	registry.emplace<GAME::Bounded>(player);
+	registry.emplace<GAME::Gaming>(gameManager);
 
 	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
 	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });

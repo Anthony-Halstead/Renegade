@@ -279,7 +279,7 @@ namespace AI
 		if (!r.any_of<AI::FlyOffScreen>(selectedEnemy))
 			r.emplace_or_replace<AI::FlyOffScreen>(selectedEnemy);
 	}
-
+	
 	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
 	{
 		auto view = registry.view<GAME::Enemy_Boss, GAME::Invulnerability>();
@@ -334,7 +334,7 @@ namespace AI
 						SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
 					}
 				}
-			}			
+			}
 
 			// Enemy fly off screen
 			const float flyOffDelay = (*config).at("Enemy1").at("flyOffTimer").as<float>();
@@ -378,16 +378,23 @@ namespace AI
 			if (registry.all_of<GAME::Health>(bossEntity))
 			{
 				auto& hp = registry.get<GAME::Health>(bossEntity);
+				unsigned int maxHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
+
+				// Check if boss is half health to spawn enemy bomb
+				if (!registry.any_of<AI::BossHalfHealth>(bossEntity) &&
+					hp.health > 0 && hp.health <= maxHealth / 2)
+				{
+					registry.emplace<AI::BossHalfHealth>(bossEntity);
+					std::cout << "Enemy Boss is at half health, spawning enemy bombers!" << std::endl;
+					// Spawn enemy bombers					
+				}
+
 				if (hp.health <= 0)
 				{					
 					registry.emplace<GAME::Destroy>(bossEntity);
 					registry.remove<GAME::SpawnEnemies>(bossEntity);
 					registry.remove<GAME::Enemy_Boss>(bossEntity);
 					std::cout << "Enemy Boss defeated!" << std::endl;
-				}
-				else
-				{
-					registry.patch<GAME::Enemy_Boss>(bossEntity);
 				}
 			}			
 		}
@@ -401,13 +408,20 @@ namespace AI
 		const std::string model = cfg.at("Bullet").at("model").as<std::string>();
 
 		auto v = R.view<GAME::Enemy, GAME::Velocity, GAME::Transform>();
+		const int maxShots = cfg.at("Enemy1").at("maxShots").as<int>();
+		const float holdTime = cfg.at("Enemy1").at("holdFireTime").as<float>();
 
 		for (auto e : v)
 		{
+			if (R.any_of<HoldFire>(e)) continue;
+
 			if (LengthXZ(v.get<GAME::Velocity>(e).vec) > 0.01f) {
 				if (auto* f = R.try_get<GAME::Firing>(e)) f->cooldown = rate;
 				continue;
 			}
+
+			ShotsFired* shots = R.try_get<ShotsFired>(e);
+			if (!shots) shots = &R.emplace<ShotsFired>(e, 0);
 
 			GAME::Firing* fire = R.try_get<GAME::Firing>(e);
 			if (!fire) fire = &R.emplace<GAME::Firing>(e, rate);
@@ -428,8 +442,33 @@ namespace AI
 			UTIL::CreateDynamicObjects(R, b, model);
 
 			fire->cooldown = rate;
+			shots->count++;
+
+			if (shots->count >= maxShots)
+			{
+				R.emplace_or_replace<HoldFire>(e, holdTime);
+				shots->count = 0;
+			}
 		}
 
+	}
+
+	void UpdateHoldFire(entt::registry& R)
+	{
+		double dt = R.ctx().get<UTIL::DeltaTime>().dtSec;
+		auto view = R.view<HoldFire>();
+		for (auto e : view)
+		{
+			auto& hold = R.get<HoldFire>(e);
+			hold.holdTime -= static_cast<float>(dt);
+			if (hold.holdTime <= 0.0f)
+			{
+				R.remove<HoldFire>(e);
+				// Debug
+				std::cout << "Enemy can fire again." << std::endl;
+				//
+			}
+		}
 	}
 
 	void UpdateAIDestroy(entt::registry& registry)
@@ -437,6 +476,18 @@ namespace AI
 		entt::basic_view destroy = registry.view<GAME::Destroy>();
 		for (auto ent : destroy) registry.destroy(ent);
 	}
+
+	void UpdateRusherEnemies(entt::registry& registry, entt::entity& entity)
+	{
+		// create view of rusher enemies and transform
+		// create loop of all rusher enemies
+		// inside loop, run if check for moveTowards
+		  // If (moveTowards) pass in variables
+				// Explosion method call
+	}
+
+	// Set up to test on_destroy call below
+	//void EnemyBomberDestroyed(entt::registry& registry, entt::entity entity){}
 	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
@@ -471,6 +522,7 @@ namespace AI
 
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);
+			UpdateHoldFire(registry);
 			UpdateStandardProjectile(registry);
 			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);
 		}
@@ -481,5 +533,8 @@ namespace AI
 	{
 		registry.on_construct<AIDirector>().connect<Initialize>();
 		registry.on_update<AIDirector>().connect<Update>();
+
+		// Might not work
+		//registry.on_destroy<EnemyBomber>().connect<EnemyBomberDestroyed>();
 	};
 }

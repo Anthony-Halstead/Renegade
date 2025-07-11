@@ -37,6 +37,27 @@ namespace AI
 
 	}
 
+	inline void SpawnRush(entt::registry& R, const GW::MATH::GVECTORF& spawnPos)
+	{
+		// Spawn unique enemy that will rush the player
+		// Enemy will not shoot but simply target the player wherever they are at and fly into them
+		// The enemy will then be destroyed upon collision with the player
+
+		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::entity e = R.create();
+		std::string eModel = (*config).at("Enemy1").at("model").as<std::string>();
+		R.emplace<AI::RushTarget>(e);
+		R.emplace<AI::EnemyBomber>(e);
+		R.emplace<GAME::Bounded>(e);
+		GW::MATH::GMATRIXF enemyMatrix = GW::MATH::GIdentityMatrixF;
+		enemyMatrix.row4 = spawnPos;
+		R.emplace<GAME::Transform>(e, enemyMatrix);
+		R.emplace<GAME::Velocity>(e);
+
+		UTIL::CreateDynamicObjects(R, e, eModel);
+	}
+
 
 	inline void SpawnWave(entt::registry& R, FormationType kind, uint32_t spawnCount, const GW::MATH::GVECTORF& spawnPos, const GW::MATH::GVECTORF& anchorPos, float spacing = 2.5f)
 	{
@@ -58,9 +79,6 @@ namespace AI
 
 	GW::MATH::GMATRIXF EnemyScaler(GAME::Transform transform, float scale)
 	{
-		GW::MATH::GMATRIXF identity;
-		GW::MATH::GMatrix::IdentityF(identity);
-
 		GW::MATH::GMATRIXF scaleMatrix;
 		GW::MATH::GMatrix::IdentityF(scaleMatrix);
 		scaleMatrix.row1.x *= scale;

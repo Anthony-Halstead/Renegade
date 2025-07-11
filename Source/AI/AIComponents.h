@@ -26,5 +26,10 @@ namespace AI
 	struct TimeAtPosition{ float timeAtPosition = 0.0f; };
 	struct FlyOffScreen {};
 	struct ReturningToPosition {};
+	struct HoldFire { float holdTime = 0.0f; };
+	struct ShotsFired { int count = 0; };
+	struct EnemyBomber {};
+	struct RushTarget { GW::MATH::GVECTORF trg; };
+	struct BossHalfHealth {};
 }
 #endif

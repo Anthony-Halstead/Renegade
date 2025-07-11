@@ -215,10 +215,10 @@ namespace DRAW
 		data.camPos = camera.camMatrix.row4;
 		GW::MATH::GMatrix::InverseF(camera.camMatrix, data.viewMatrix);
 
-		static auto start = std::chrono::high_resolution_clock::now();
-		auto now = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<float> elapsed = now - start;
-		data.time = elapsed.count();
+		using clock = std::chrono::steady_clock;
+		static const double t0 = std::chrono::duration<double>(clock::now().time_since_epoch()).count();
+		double tNow = std::chrono::duration<double>(clock::now().time_since_epoch()).count();
+		data.time = static_cast<float>(tNow - t0);
 
 		unsigned int frame;
 		renderer.vlkSurface.GetSwapchainCurrentImage(frame);

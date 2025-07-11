@@ -7,6 +7,32 @@ namespace AI
 {
 
 	struct AIDirector {};
+	//TODO: Impliment animation/behavioral state machine
+	struct Agent
+	{
+		float moveSpeed;
+		float rotationSpeed;
+		float stoppingDistance;
+	};
+
+	struct FlockMember {};
+
+	struct BoidStats
+	{
+		float maxSpeed;
+		float safeRadius;
+		float alignmentStrength;
+		float cohesionStrength;
+		float separationStrength;
+		float seekStrength;
+		float flockRadius;
+	};
+
+	struct FlockGoal
+	{
+		GW::MATH::GVECTORF pos;
+		float time;
+	};
 
 	struct FormationAnchor
 	{

@@ -9,14 +9,14 @@ namespace GAME
 {
 	// Helper functions
 
-	void UpdateClampToScreen(entt::registry& registry)
+	void UpdateClampToScreen(entt::registry& registry, float marginOffset = 23.f)
 	{
 		auto wView = registry.view<APP::Window>();
 		if (wView.empty()) return;
 		const auto& window = wView.get<APP::Window>(*wView.begin());
 
-		float halfWidth = static_cast<float>(window.width) / 23.0f;
-		float halfHeight = static_cast<float>(window.height) / 23.0f;
+		float halfWidth = static_cast<float>(window.width) / marginOffset;
+		float halfHeight = static_cast<float>(window.height) / marginOffset;
 
 		float minX = -halfWidth;
 		float maxX = halfWidth;
@@ -33,7 +33,6 @@ namespace GAME
 			if (M.row4.z > maxZ)   M.row4.z = maxZ;
 		}
 	}
-
 
 	void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
 	{
@@ -186,7 +185,7 @@ namespace GAME
 
 					// Bullets hit enemy boss
 					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt) 
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt)
 							&& !registry.any_of<Hit>(otherEnt) && !registry.any_of<Invulnerability>(otherEnt))
 						{
 							// Prevent self-hit
@@ -213,7 +212,7 @@ namespace GAME
 
 					// Bullets hit Player from Enemy
 					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Player>(otherEnt) 
+						if (registry.any_of<Bullet>(ent) && registry.any_of<Player>(otherEnt)
 							&& !registry.any_of<Hit>(otherEnt) && !registry.any_of<Invulnerability>(otherEnt))
 						{
 							// Prevent self-hit
@@ -294,7 +293,7 @@ namespace GAME
 	{
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
-      //RefreshBoundsFromWindow(registry);
+			//RefreshBoundsFromWindow(registry);
 			UpdatePosition(registry);
 			UpdateClampToScreen(registry);
 			UpdateCollide(registry);
@@ -306,7 +305,6 @@ namespace GAME
 
 	CONNECT_COMPONENT_LOGIC()
 	{
-		//registry.on_construct<GameManager>().connect<InitialiseBounds>();
 		registry.on_update<GameManager>().connect<Update>();
 	};
 }

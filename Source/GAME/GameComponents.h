@@ -15,16 +15,12 @@ namespace GAME
 	struct GameOver {};
 	struct ScoreDisplayed {};
 
-	struct BoundsManager
-	{
-		int left, right, bottom, top;
-	};
 	struct Bounded {};
 	///*** Components ***///
 	struct GameManager {};
 
 	struct StateManager {};
-	
+
 	struct Transform {
 		GW::MATH::GMATRIXF matrix;
 	};

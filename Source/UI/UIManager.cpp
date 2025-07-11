@@ -13,6 +13,24 @@
 
 namespace UI
 {
+	// helper functions
+	void DisplayScores(entt::registry& registry, UIManager& ui)
+	{
+		auto& scoreComponent = registry.get<GAME::Score>(registry.view<GAME::Score>().front());
+		std::string scoreText = "Score " + std::to_string(scoreComponent.score);
+		ui.font->DrawTextImmediate(0, 24, scoreText.c_str(), scoreText.size());
+
+		std::string highScoreText = "High Score " + std::to_string(scoreComponent.highScore);
+		ui.font->DrawTextImmediate(0, 48, highScoreText.c_str(), highScoreText.size());
+	}
+
+	void DisplayPlayerHealth(entt::registry& registry, UIManager& ui, APP::Window& window)
+	{
+		auto& healthComponent = registry.get<GAME::Health>(registry.view<GAME::Player>().front());
+		std::string healthText = "Lives: " + std::to_string(healthComponent.health);
+		ui.font->DrawTextImmediate(0, window.height - 5, healthText.c_str(), healthText.size());
+	}
+
 	void Construct_UI(entt::registry& registry, entt::entity entity)
 	{
 		auto& win = registry.get<GW::SYSTEM::GWindow>(entity);
@@ -32,12 +50,8 @@ namespace UI
 		
 		ui.blitter->ClearColor(0x0);
 		
-		auto& scoreComponent = registry.get<GAME::Score>(registry.view<GAME::Score>().front());
-		std::string scoreText = "Score " + std::to_string(scoreComponent.score);
-		ui.font->DrawTextImmediate(0, 24, scoreText.c_str(), scoreText.size());
-
-		std::string highScoreText = "High Score " + std::to_string(scoreComponent.highScore);
-		ui.font->DrawTextImmediate(0, 48, highScoreText.c_str(), highScoreText.size());
+		DisplayScores(registry, ui);
+		DisplayPlayerHealth(registry, ui, window);
 		
 		unsigned int* color_pix;
 		ui.overlay->LockForUpdate(window.width * window.height, &color_pix);

@@ -180,7 +180,9 @@ namespace GAME
 							--registry.get<Health>(otherEnt).health;
 							registry.emplace<Hit>(otherEnt);
 							registry.emplace_or_replace<Destroy>(ent);
+							/// Debug
 							std::cout << "Enemy hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
+							///
 						}
 					}
 
@@ -201,13 +203,9 @@ namespace GAME
 							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("EnemyBoss_Station").at("invulnPeriod").as<float>());
 							registry.emplace<Hit>(otherEnt);
 							registry.emplace_or_replace<Destroy>(ent);
-
+							/// Debug
 							std::cout << "Enemy Boss hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
-							/*auto scoreView = registry.view<Score>();
-							if (!scoreView.empty()) {
-								auto scoreEnt = scoreView.front();
-								std::cout << "Current Score: " << registry.get<Score>(scoreEnt).score << std::endl;
-							} */
+							///
 						}
 					}
 
@@ -228,7 +226,9 @@ namespace GAME
 							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("Player").at("invulnPeriod").as<float>());
 							registry.emplace<Hit>(otherEnt);
 							registry.emplace_or_replace<Destroy>(ent);
+							/// Debug
 							std::cout << "Player hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
+							///
 						}
 					}
 
@@ -238,9 +238,13 @@ namespace GAME
 						{
 							--registry.get<Health>(ent).health;
 							registry.emplace<Invulnerability>(ent, (*registry.ctx().get<UTIL::Config>().gameConfig).at("Player").at("invulnPeriod").as<float>());
+							/// Debug
 							std::cout << "Player's current health: " << registry.get<Health>(ent).health << std::endl;
+							///
 						}
 					}
+
+					
 				}
 				else
 				{
@@ -261,6 +265,7 @@ namespace GAME
 	void UpdateHit(entt::registry& registry)
 	{
 		entt::basic_view hit = registry.view<Hit>();
+		registry.patch<StateManager>(registry.view<StateManager>().front());
 		registry.remove<Hit>(hit.begin(), hit.end());
 	}
 
@@ -278,7 +283,9 @@ namespace GAME
 		if (deathCount == players.size())
 		{
 			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
+			/// Debug
 			std::cout << "You lose, game over." << std::endl;
+			///
 
 			AUDIO::AudioSystem::PlayMusicTrack("lose");
 		}

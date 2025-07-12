@@ -4,6 +4,7 @@
 #include "../AUDIO/AudioSystem.h"
 #include "../CCL.h"
 #include "../APP/Window.hpp"
+#include "../UI/UIComponents.h"
 
 namespace GAME
 {
@@ -313,6 +314,8 @@ namespace GAME
 			UpdatePlayers(registry, entity);
 			UpdateDestroy(registry);
 		}
+		else if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()))
+			registry.emplace_or_replace<UI::WinLoseScreen>(registry.view<UI::UIManager>().front());
 	}
 
 	CONNECT_COMPONENT_LOGIC()

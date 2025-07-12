@@ -243,20 +243,24 @@ namespace GAME
 						}
 					}
 
-					
+
 				}
-				else
-				{
-					if (registry.any_of<Bullet>(ent) && !registry.any_of<Destroy>(ent))
-					{
-						auto& bullet = registry.get<Bullet>(ent);
-						bullet.lifetime -= registry.ctx().get<UTIL::DeltaTime>().dtSec;
-						if (bullet.lifetime <= 0.0f)
-						{
-							registry.emplace<Destroy>(ent);
-						}
-					}
-				}
+
+			}
+		}
+	}
+
+	void UpdateBullet(entt::registry& registry)
+	{
+		auto& view = registry.view <entt::exclude_t<Destroy>, Bullet>();
+
+		for (auto& e : view)
+		{
+			auto& bullet = registry.get<Bullet>(e);
+			bullet.lifetime -= registry.ctx().get<UTIL::DeltaTime>().dtSec;
+			if (bullet.lifetime <= 0.0f)
+			{
+				registry.emplace<Destroy>(e);
 			}
 		}
 	}
@@ -303,6 +307,7 @@ namespace GAME
 			//RefreshBoundsFromWindow(registry);
 			UpdatePosition(registry);
 			UpdateClampToScreen(registry);
+			UpdateBullet(registry);
 			UpdateCollide(registry);
 			UpdateHit(registry);
 			UpdatePlayers(registry, entity);

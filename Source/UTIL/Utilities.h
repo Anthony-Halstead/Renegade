@@ -24,6 +24,8 @@ namespace UTIL
 		GW::INPUT::GController gamePads; // controller support
 		GW::INPUT::GInput immediateInput; // twitch keyboard/mouse
 		GW::INPUT::GBufferedInput bufferedInput; // event keyboard/mouse
+
+		int connectedControllers = 0; // Controller index
 	};
 
 	/// Method declarations

@@ -235,7 +235,7 @@ namespace AI
 
 					auto& bossTransform = registry.get<GAME::Transform>(ent);
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-					SpawnFlock(registry, 20, bossPos);
+					//SpawnFlock(registry, 20, bossPos);
 					SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
 				}
 
@@ -462,8 +462,8 @@ namespace AI
 
 						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
 						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-						SpawnFlock(registry, 20, bossPos);
-						SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+						//SpawnFlock(registry, 20, bossPos);
+						//SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
 
 
 					}

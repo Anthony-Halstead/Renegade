@@ -115,6 +115,7 @@ void GraphicsBehavior(entt::registry& registry)
 	pressEvents.Create(32);
 	input.bufferedInput.Register(pressEvents);
 	input.gamePads.Register(pressEvents);
+	input.gamePads.GetNumConnected(input.connectedControllers);
 
 	// Create a transient component to initialize the Renderer
 	std::string vertShader = (*config).at("Shaders").at("vertex").as<std::string>();

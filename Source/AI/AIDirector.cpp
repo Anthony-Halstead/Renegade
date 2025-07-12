@@ -9,36 +9,187 @@
 
 namespace AI
 {
-	//HELPERS--------------
-	float LengthXZ(const GW::MATH::GVECTORF& v)
+	//FLOCK--------------------
+	void ComputeFlockAverages(entt::registry& registry, GW::MATH::GVECTORF& outAvgPos, GW::MATH::GVECTORF& outAvgFwd)
 	{
-		return std::sqrt(v.x * v.x + v.z * v.z);
+		auto view = registry.view<FlockMember, GAME::Transform, GAME::Velocity>();
+		GW::MATH::GVECTORF sumPos{ 0,0,0,0 }, sumFwd{ 0,0,0,0 };
+		size_t count = 0;
+
+		for (auto e : view)
+		{
+			auto& M = registry.get<GAME::Transform>(e).matrix;
+			auto& V = registry.get<GAME::Velocity>(e).vec;
+
+			sumPos.x += M.row4.x;
+			sumPos.y += M.row4.y;
+			sumPos.z += M.row4.z;
+
+			float v2; GW::MATH::GVector::DotF(V, V, v2);
+			if (v2 > 1e-6f) {
+				GW::MATH::GVECTORF norm;
+				GW::MATH::GVector::NormalizeF(V, norm);
+				sumFwd.x += norm.x;
+				sumFwd.y += norm.y;
+				sumFwd.z += norm.z;
+			}
+			++count;
+		}
+
+		if (count == 0) {
+			outAvgPos = { 0,0,0,0 };
+			outAvgFwd = { 0,0,0,0 };
+		}
+		else {
+			float inv = 1.f / float(count);
+			outAvgPos = { sumPos.x * inv,
+						  sumPos.y * inv,
+						  sumPos.z * inv,
+						  0.f };
+			outAvgFwd = { sumFwd.x * inv,
+						  sumFwd.y * inv,
+						  sumFwd.z * inv,
+						  0.f };
+		}
 	}
-	void NormalizeXZ(const GW::MATH::GVECTORF& v, GW::MATH::GVECTORF& out)
+	GW::MATH::GVECTORF CalculateAlignment(const GW::MATH::GVECTORF& avgFwd, const BoidStats& stats, float strength)
 	{
-		float len = LengthXZ(v);
-		out = (len > 1e-4f) ? GW::MATH::GVECTORF{ v.x / len, 0, v.z / len, 0 } : GW::MATH::GVECTORF{ 0,0,0,0 };
+		using namespace GW::MATH;
+		GVECTORF vec = avgFwd;
+
+		GVector::ScaleF(vec, 1.f / stats.maxSpeed, vec);
+		float m2;
+		GVector::DotF(vec, vec, m2);
+		if (m2 > 1.0f)
+			GVector::NormalizeF(vec, vec);
+		GVector::ScaleF(vec, strength, vec);
+		return vec;
 	}
-	constexpr float DegToRad(float d) { return d * 0.0174532925f; }
-	void YawToward(const GW::MATH::GVECTORF& desired, GW::MATH::GVECTORF& forward, float maxStepRad)
+	GW::MATH::GVECTORF CalculateCohesion(const GW::MATH::GVECTORF& avgPos, const GW::MATH::GVECTORF& pos, float flockRadius, float strength)
 	{
-		GW::MATH::GVECTORF d = { desired.x,0,desired.z,0 };
-		GW::MATH::GVECTORF f = { forward.x,0,forward.z,0 };
-		NormalizeXZ(d, d); NormalizeXZ(f, f);
-
-		float dot; GW::MATH::GVector::DotF(d, f, dot);
-		dot = std::clamp(dot, -1.f, 1.f);
-		float angle = std::acos(dot);
-		if (angle < 1e-4f) { forward = desired; return; }
-
-		float crossY = d.x * f.z - d.z * f.x;
-		float sign = (std::fabs(crossY) < 1e-4f) ? 1.f : (crossY < 0 ? -1.f : 1.f);
-
-		float step = min(angle, maxStepRad) * sign;
-
-		float c = std::cos(step), s = std::sin(step);
-		forward = { f.x * c - f.z * s, 0, f.x * s + f.z * c, 0 };
+		using namespace GW::MATH;
+		GVECTORF vec;
+		GVector::SubtractVectorF(avgPos, pos, vec);
+		float d = std::sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+		GVector::NormalizeF(vec, vec);
+		if (d < flockRadius) {
+			GVector::ScaleF(vec, d / flockRadius, vec);
+		}
+		GVector::ScaleF(vec, strength, vec);
+		return vec;
 	}
+	GW::MATH::GVECTORF CalculateSeparation(entt::registry& registry, entt::entity self, float safeRadius, float strength)
+	{
+		using namespace GW::MATH;
+		GVECTORF sum{ 0,0,0,0 };
+		auto& Tself = registry.get<GAME::Transform>(self).matrix;
+
+		auto view = registry.view<FlockMember, AI::BoidStats, GAME::Transform>();
+		for (auto other : view) {
+			if (other == self) continue;
+			auto& Tother = registry.get<GAME::Transform>(other).matrix;
+			auto& statsO = registry.get<AI::BoidStats>(other);
+
+			GVECTORF diff;
+			GVector::SubtractVectorF(Tself.row4, Tother.row4, diff);
+			float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+			float safe = safeRadius + statsO.safeRadius;
+
+			if (dist > 0.f && dist < safe) {
+				GVector::NormalizeF(diff, diff);
+				GVector::ScaleF(diff, (safe - dist) / safe, diff);
+				sum.x += diff.x;
+				sum.y += diff.y;
+				sum.z += diff.z;
+			}
+		}
+
+		float m2; GVector::DotF(sum, sum, m2);
+		if (m2 > 1.f)
+			GVector::NormalizeF(sum, sum);
+		GVector::ScaleF(sum, strength, sum);
+		return sum;
+	}
+	GW::MATH::GVECTORF CalculateSeek(const GW::MATH::GVECTORF& pos, const GW::MATH::GVECTORF& goal, float maxSpeed, float strength)
+	{
+		using namespace GW::MATH;
+		GVECTORF vec;
+		GVector::SubtractVectorF(goal, pos, vec);
+
+		float d2; GVector::DotF(vec, vec, d2);
+		if (d2 < 1e-6f)
+			return { 0,0,0,0 };
+
+		GVector::NormalizeF(vec, vec);
+		GVector::ScaleF(vec, strength, vec);
+		return vec;
+	}
+	void ApplySteering(GAME::Velocity& vel, const GW::MATH::GVECTORF& steer, float maxSpeed, float dt)
+	{
+		using namespace GW::MATH;
+		GVECTORF accel = steer;
+		GVector::ScaleF(accel, maxSpeed * dt, accel);
+
+		vel.vec.x += accel.x;
+		vel.vec.y += accel.y;
+		vel.vec.z += accel.z;
+
+		float v2; GVector::DotF(vel.vec, vel.vec, v2);
+		float ms2 = maxSpeed * maxSpeed;
+		if (v2 > ms2) {
+			GVector::NormalizeF(vel.vec, vel.vec);
+			GVector::ScaleF(vel.vec, maxSpeed, vel.vec);
+		}
+	}
+	void UpdateFlock(entt::registry& registry)
+	{
+		auto view = registry.view<FlockMember, GAME::Transform, GAME::Velocity, BoidStats>();
+
+		float dt = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+		auto wView = registry.view<FlockGoal>();
+		FlockGoal goal;
+		if (!wView.empty())
+			goal = wView.get<FlockGoal>(*wView.begin());
+
+		GW::MATH::GVECTORF avgPos, avgFwd;
+		ComputeFlockAverages(registry, avgPos, avgFwd);
+
+		for (auto e : view) {
+			auto& T = registry.get<GAME::Transform>(e).matrix;
+			auto& V = registry.get<GAME::Velocity>(e);
+			auto& stats = registry.get<BoidStats>(e);
+
+			auto align = CalculateAlignment(avgFwd, stats, stats.alignmentStrength);
+			auto coh = CalculateCohesion(avgPos, T.row4, stats.flockRadius, stats.cohesionStrength);
+			auto sep = CalculateSeparation(registry, e, stats.safeRadius, stats.separationStrength);
+			auto seek = CalculateSeek(T.row4, goal.pos, stats.maxSpeed, stats.seekStrength);
+			GW::MATH::GVECTORF steer = seek;
+			steer.x += align.x + coh.x + sep.x;
+			steer.y += align.y + coh.y + sep.y;
+			steer.z += align.z + coh.z + sep.z;
+
+			ApplySteering(V, steer, stats.maxSpeed, dt);
+		}
+	}
+	void UpdateFlockGoal(entt::registry& registry)
+	{
+		using namespace GW::MATH;
+		float dt = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+		auto& view = registry.view<FlockGoal>();
+		if (view.empty()) return;
+		auto& goal = view.get<FlockGoal>(*view.begin());
+		goal.time -= dt;
+
+		if (goal.time <= 0.f)
+		{
+			std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+			goal.pos = UTIL::RandomPointInWindowXZ(registry);
+			float intervalSec = (*config).at("Timers").at("flockGoal").as<float>();
+			goal.time = intervalSec;
+		}
+	}
+
+	//HELPERS-----------------
 	FormationType RandomFormationType()
 	{
 		static std::mt19937 rng{ std::random_device{}() };
@@ -57,7 +208,6 @@ namespace AI
 		std::uniform_int_distribution<std::size_t> dist(0, kinds.size() - 1);
 		return kinds[dist(rng)];
 	}
-
 
 	void UpdateBossOneBehavior(entt::registry& registry, entt::entity& entity)
 	{
@@ -85,7 +235,7 @@ namespace AI
 
 					auto& bossTransform = registry.get<GAME::Transform>(ent);
 					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-
+					SpawnFlock(registry, 20, bossPos);
 					SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
 				}
 
@@ -135,43 +285,25 @@ namespace AI
 		auto view = r.view<FormationMember, MoveTarget, GAME::Transform, GAME::Velocity>();
 
 		const float rotSpeedDeg = 90.f;
-		const float rotStepRad = DegToRad(rotSpeedDeg) * r.ctx().get<UTIL::DeltaTime>().dtSec;
+		const float rotStepRad = G_DEGREE_TO_RADIAN_F(rotSpeedDeg) * r.ctx().get<UTIL::DeltaTime>().dtSec;
 
 		for (auto e : view)
 		{
 			const auto& fm = view.get<FormationMember>(e);
 			if (!r.valid(fm.anchor) || !r.all_of<FormationAnchor>(fm.anchor)) continue;
 			const auto& anchor = r.get<FormationAnchor>(fm.anchor);
-			if (fm.index >= anchor.slots.size()) continue;
+			if (fm.index > anchor.slots.size()) continue;
 
 			const GW::MATH::GVECTORF slotPos = anchor.slots[fm.index];
 			const GW::MATH::GVECTORF anchorPos = anchor.origin;
 			view.get<MoveTarget>(e).pos = slotPos;
 
 			const GW::MATH::GMATRIXF& m = view.get<GAME::Transform>(e).matrix;
-			GW::MATH::GVECTORF delta;
-			GW::MATH::GVector::SubtractVectorF(slotPos, m.row4, delta);
-			if (LengthXZ(delta) > 0.1f) continue;
+
+			if (UTIL::Distance(m.row4, slotPos) > 50.0f) continue;
 
 			if (!r.any_of<CircleTag>(fm.anchor)) continue;
-
-			GW::MATH::GVECTORF fwd = m.row3;
-
-			GW::MATH::GVECTORF desired;
-			GW::MATH::GVector::SubtractVectorF(anchorPos, slotPos, desired);
-			NormalizeXZ(desired, desired);
-
-			YawToward(desired, fwd, rotStepRad);
-
-			const GW::MATH::GVECTORF up = { 0,1,0,0 };
-			GW::MATH::GVECTORF right;  GW::MATH::GVector::CrossVector3F(up, fwd, right);
-			GW::MATH::GVector::NormalizeF(right, right);
-			GW::MATH::GVECTORF trueUp; GW::MATH::GVector::CrossVector3F(fwd, right, trueUp);
-
-			GW::MATH::GMATRIXF& mw = view.get<GAME::Transform>(e).matrix;
-			mw.row1 = { right.x,  right.y,  right.z, 0 };
-			mw.row2 = { trueUp.x, trueUp.y, trueUp.z,0 };
-			mw.row3 = fwd;
+			UTIL::RotateTowards(view.get<GAME::Transform>(e), anchorPos, rotStepRad);
 		}
 	}
 	void UpdateLocomotion(entt::registry& r)
@@ -200,7 +332,7 @@ namespace AI
 			if (r.any_of<AI::FlyOffScreen>(e))
 			{
 				float speed = (*r.ctx().get<UTIL::Config>().gameConfig).at("Enemy1").at("speed").as<float>();
-				view.get<GAME::Velocity>(e).vec = {speed, 0, 0, 0};
+				view.get<GAME::Velocity>(e).vec = { speed, 0, 0, 0 };
 
 				// Wrap around screen edges
 				if (pos.x < minX)
@@ -224,18 +356,17 @@ namespace AI
 				const auto target = view.get<MoveTarget>(e).pos;
 				auto& vel = view.get<GAME::Velocity>(e).vec;
 
-				GW::MATH::GVECTORF delta;
-				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
-
-				if (LengthXZ(delta) < 0.1f)
+				if (UTIL::Distance(target, pos) < 0.1f)
 				{
 					vel = { 0,0,0,0 };
 					r.remove<AI::ReturningToPosition>(e); // Enemy back in position
 				}
 				else
 				{
-					GW::MATH::GVECTORF dir; NormalizeXZ(delta, dir);
-					GW::MATH::GVector::ScaleF(dir, speed, vel);
+					GW::MATH::GVECTORF delta;
+					GW::MATH::GVector::SubtractVectorF(target, pos, delta);
+					GW::MATH::GVector::NormalizeF(delta, delta);
+					GW::MATH::GVector::ScaleF(delta, speed, vel);
 				}
 				continue;
 			}
@@ -246,9 +377,10 @@ namespace AI
 			GW::MATH::GVECTORF delta;
 			GW::MATH::GVector::SubtractVectorF(trg, pos, delta);
 
-			if (LengthXZ(delta) > 0.1f)
+			if (UTIL::Distance(pos, trg) > 0.1f)
 			{
-				GW::MATH::GVECTORF dir; NormalizeXZ(delta, dir);
+				GW::MATH::GVECTORF dir;
+				GW::MATH::GVector::NormalizeF(delta, dir);
 				GW::MATH::GVector::ScaleF(dir, speed, vel);
 			}
 			else
@@ -279,7 +411,7 @@ namespace AI
 		if (!r.any_of<AI::FlyOffScreen>(selectedEnemy))
 			r.emplace_or_replace<AI::FlyOffScreen>(selectedEnemy);
 	}
-	
+
 	void EnemyInvulnerability(entt::registry& registry, const float& deltaTime)
 	{
 		auto view = registry.view<GAME::Enemy_Boss, GAME::Invulnerability>();
@@ -330,8 +462,10 @@ namespace AI
 
 						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
 						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-
+						SpawnFlock(registry, 20, bossPos);
 						SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, 10);
+
+
 					}
 				}
 			}
@@ -346,10 +480,8 @@ namespace AI
 				const auto& target = registry.get<MoveTarget>(e).pos;
 				auto& timer = registry.get<AI::TimeAtPosition>(e);
 
-				// Check if enemy is at or near its target position
-				GW::MATH::GVECTORF delta;
-				GW::MATH::GVector::SubtractVectorF(target, pos, delta);
-				if (LengthXZ(delta) < 0.1f)
+
+				if (UTIL::Distance(target, pos) < 0.1f)
 				{
 					timer.timeAtPosition += deltaTime;
 					if (timer.timeAtPosition >= flyOffDelay && !registry.any_of<AI::FlyOffScreen>(e))
@@ -362,41 +494,35 @@ namespace AI
 				else
 				{
 					timer.timeAtPosition = 0.0f;
+
 				}
 			}
 
 			for (auto ent : lesserEnemies)
 			{
 				GAME::Health hp = registry.get<GAME::Health>(ent);
-				
+
 				if (hp.health <= 0)
 				{
 					registry.emplace<GAME::Destroy>(ent);
-				}					
+				}
 			}
 
 			if (registry.all_of<GAME::Health>(bossEntity))
 			{
 				auto& hp = registry.get<GAME::Health>(bossEntity);
-				unsigned int maxHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
-
-				// Check if boss is half health to spawn enemy bomb
-				if (!registry.any_of<AI::BossHalfHealth>(bossEntity) &&
-					hp.health > 0 && hp.health <= maxHealth / 2)
-				{
-					registry.emplace<AI::BossHalfHealth>(bossEntity);
-					std::cout << "Enemy Boss is at half health, spawning enemy bombers!" << std::endl;
-					// Spawn enemy bombers					
-				}
-
 				if (hp.health <= 0)
-				{					
+				{
 					registry.emplace<GAME::Destroy>(bossEntity);
 					registry.remove<GAME::SpawnEnemies>(bossEntity);
 					registry.remove<GAME::Enemy_Boss>(bossEntity);
 					std::cout << "Enemy Boss defeated!" << std::endl;
 				}
-			}			
+				else
+				{
+					registry.patch<GAME::Enemy_Boss>(bossEntity);
+				}
+			}
 		}
 	}
 
@@ -408,20 +534,14 @@ namespace AI
 		const std::string model = cfg.at("Bullet").at("model").as<std::string>();
 
 		auto v = R.view<GAME::Enemy, GAME::Velocity, GAME::Transform>();
-		const int maxShots = cfg.at("Enemy1").at("maxShots").as<int>();
-		const float holdTime = cfg.at("Enemy1").at("holdFireTime").as<float>();
 
 		for (auto e : v)
 		{
-			if (R.any_of<HoldFire>(e)) continue;
-
-			if (LengthXZ(v.get<GAME::Velocity>(e).vec) > 0.01f) {
+			const GW::MATH::GVECTORF zero = GW::MATH::GIdentityVectorF;
+			if (UTIL::Distance(zero, v.get<GAME::Velocity>(e).vec) > 0.01f) {
 				if (auto* f = R.try_get<GAME::Firing>(e)) f->cooldown = rate;
 				continue;
 			}
-
-			ShotsFired* shots = R.try_get<ShotsFired>(e);
-			if (!shots) shots = &R.emplace<ShotsFired>(e, 0);
 
 			GAME::Firing* fire = R.try_get<GAME::Firing>(e);
 			if (!fire) fire = &R.emplace<GAME::Firing>(e, rate);
@@ -442,33 +562,8 @@ namespace AI
 			UTIL::CreateDynamicObjects(R, b, model);
 
 			fire->cooldown = rate;
-			shots->count++;
-
-			if (shots->count >= maxShots)
-			{
-				R.emplace_or_replace<HoldFire>(e, holdTime);
-				shots->count = 0;
-			}
 		}
 
-	}
-
-	void UpdateHoldFire(entt::registry& R)
-	{
-		double dt = R.ctx().get<UTIL::DeltaTime>().dtSec;
-		auto view = R.view<HoldFire>();
-		for (auto e : view)
-		{
-			auto& hold = R.get<HoldFire>(e);
-			hold.holdTime -= static_cast<float>(dt);
-			if (hold.holdTime <= 0.0f)
-			{
-				R.remove<HoldFire>(e);
-				// Debug
-				std::cout << "Enemy can fire again." << std::endl;
-				//
-			}
-		}
 	}
 
 	void UpdateAIDestroy(entt::registry& registry)
@@ -477,18 +572,6 @@ namespace AI
 		for (auto ent : destroy) registry.destroy(ent);
 	}
 
-	void UpdateRusherEnemies(entt::registry& registry, entt::entity& entity)
-	{
-		// create view of rusher enemies and transform
-		// create loop of all rusher enemies
-		// inside loop, run if check for moveTowards
-		  // If (moveTowards) pass in variables
-				// Explosion method call
-	}
-
-	// Set up to test on_destroy call below
-	//void EnemyBomberDestroyed(entt::registry& registry, entt::entity entity){}
-	
 	void Update(entt::registry& registry, entt::entity entity)
 	{
 		static unsigned int bossWaveCount = 0;
@@ -496,6 +579,10 @@ namespace AI
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			UpdateEnemies(registry, entity);
+
+			UpdateFlockGoal(registry);
+			UpdateFlock(registry);
+
 			UpdateAIDestroy(registry);
 
 			// Check if boss and enemy views are empty
@@ -508,7 +595,7 @@ namespace AI
 
 				if (bossWaveCount < bossCount)
 				{
-					if(bossWaveCount == 0)
+					if (bossWaveCount == 0)
 						SpawnBoss(registry, "EnemyBoss_UFO");
 					++bossWaveCount;
 				}
@@ -521,20 +608,16 @@ namespace AI
 			}
 
 			UpdateFormation(registry);
+
 			UpdateLocomotion(registry);
-			UpdateHoldFire(registry);
 			UpdateStandardProjectile(registry);
 			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);
 		}
 	}
 
-
 	CONNECT_COMPONENT_LOGIC()
 	{
 		registry.on_construct<AIDirector>().connect<Initialize>();
 		registry.on_update<AIDirector>().connect<Update>();
-
-		// Might not work
-		//registry.on_destroy<EnemyBomber>().connect<EnemyBomberDestroyed>();
 	};
 }

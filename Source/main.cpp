@@ -101,7 +101,7 @@ void GraphicsBehavior(entt::registry& registry)
 		startY,
 		windowWidth,
 		windowHeight,
-		GW::SYSTEM::GWindowStyle::WINDOWEDBORDERED, "Renegade"
+		GW::SYSTEM::GWindowStyle::WINDOWEDLOCKED, "Renegade"
 		});
 
 
@@ -204,6 +204,8 @@ void MainLoopBehavior(entt::registry& registry)
 	auto winView = registry.view<APP::Window>();
 	auto& deltaTime = registry.ctx().emplace<UTIL::DeltaTime>().dtSec;
 
+	registry.emplace<UI::TitleScreen>(registry.view<UI::UIManager>().front());
+
 	do {
 		static auto frameStart = std::chrono::steady_clock::now();
 		double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - frameStart).count();
@@ -213,8 +215,9 @@ void MainLoopBehavior(entt::registry& registry)
 
 		closedCount = 0;
 
+		if(!registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
+			registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
 
-		registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
 		registry.patch<AI::AIDirector>(registry.view<AI::AIDirector>().front());
 		registry.patch<GAME::StateManager>(registry.view<GAME::StateManager>().front());
 		registry.patch<AUDIO::MusicHandle>(registry.view<AUDIO::MusicHandle>().front());

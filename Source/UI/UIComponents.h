@@ -12,6 +12,21 @@ namespace UI
 		Overlay* overlay;
 		BLIT_Font* font;
 	};
+
+	struct TitleScreen 
+	{
+		bool start = 1;
+	};
+
+	struct WinLoseScreen
+	{
+		bool restart = 1;
+	};
+
+	struct PauseScreen
+	{
+		bool pauseContinue = 1;
+	};
 }
 
 #endif 

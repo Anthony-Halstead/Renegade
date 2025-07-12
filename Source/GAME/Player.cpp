@@ -2,11 +2,13 @@
 #include "../UTIL/Utilities.h"
 #include "../CCL.h"
 #include "../AUDIO/AudioSystem.h"
+#include "../APP/Window.hpp"
 
 
 void Invulnerability(entt::registry& registry, entt::entity& entity, const float& deltaTime);
 void Shoot(entt::registry& registry, entt::entity& entity, const float& deltaTime, const float& fireRate);
-void Movement(entt::registry& registry, entt::entity& entity, const float& deltaTime, const float& speed);
+void Movement(entt::registry& registry, entt::entity& entity, 
+	const float& deltaTime, const float& speed, UTIL::Input input);
 
 void Update(entt::registry& registry, entt::entity entity) {
 	UTIL::Input input = registry.ctx().get<UTIL::Input>();
@@ -17,7 +19,7 @@ void Update(entt::registry& registry, entt::entity entity) {
 	float fireRate = playerStats.at("firerate").as<float>();
 
 	if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front())) {
-		Movement(registry, entity, deltaTime, speed);
+		Movement(registry, entity, deltaTime, speed, input);
 		Shoot(registry, entity, deltaTime, fireRate);
 		Invulnerability(registry, entity, deltaTime);
 	}
@@ -99,20 +101,68 @@ void Shoot(entt::registry& registry, entt::entity& entity, const float& deltaTim
 	}
 }
 
-void Movement(entt::registry& registry, entt::entity& entity, const float& deltaTime, const float& speed) {
+void Movement(entt::registry& registry, entt::entity& entity, 
+	const float& deltaTime, const float& speed, UTIL::Input input) {
 
 	GW::MATH::GMATRIXF& transform = registry.get<GAME::Transform>(entity).matrix;
 	GW::MATH::GVECTORF movement = {};
 
-	// WASD
-	if (GetAsyncKeyState(0x57) & 0x8000) movement.z += 1;
-	if (GetAsyncKeyState(0x41) & 0x8000) movement.x -= 1;
-	if (GetAsyncKeyState(0x53) & 0x8000) movement.z -= 1;
-	if (GetAsyncKeyState(0x44) & 0x8000) movement.x += 1;
+	float spaceKeyState, leftShiftState, wKeyState, aKeyState, sKeyState, dKeyState; //keyboard
+	float rightTriggerState, leftStickStateX, leftStickStateY; //controller
+
+	// WASD Movement
+	input.immediateInput.GetState(G_KEY_W, wKeyState);
+	input.immediateInput.GetState(G_KEY_A, aKeyState);
+	input.immediateInput.GetState(G_KEY_S, sKeyState);
+	input.immediateInput.GetState(G_KEY_D, dKeyState);
+
+	// Controller Movement
+	if (input.gamePads.GetState(0, G_RIGHT_TRIGGER_AXIS, rightTriggerState) == GW::GReturn::SUCCESS) {
+		input.gamePads.GetState(0, G_LX_AXIS, leftStickStateX);
+		input.gamePads.GetState(0, G_LY_AXIS, leftStickStateY);
+	}
+	else {
+		// No controller connected, set controller-specific inputs to zero
+		rightTriggerState = 0.0f;
+		leftStickStateX = 0.0f;
+		leftStickStateY = 0.0f;
+	}
+
+	if (wKeyState == 1.0f || leftStickStateY > 0.5f) movement.z += 1;
+	if (aKeyState == 1.0f || leftStickStateX < -0.5f) movement.x -= 1;
+	if (sKeyState == 1.0f || leftStickStateY < -0.5f) movement.z -= 1;
+	if (dKeyState == 1.0f || leftStickStateX > 0.5f) movement.x += 1;
 
 	GW::MATH::GVector::NormalizeF(movement, movement);
 	GW::MATH::GVector::ScaleF(movement, speed * deltaTime, movement);
 	GW::MATH::GVector::AddVectorF(transform.row4, movement, transform.row4);
+
+	// Rotation test
+
+	float mouseX, mouseY;
+	input.immediateInput.GetMousePosition(mouseX, mouseY);
+	// Get transform of mouse to use for rotation
+	if (movement.x != 0.0f || movement.z != 0.0f) {
+		GW::MATH::GVECTORF mousePos = {mouseX, 0, mouseY, 0};
+		auto winView = registry.view<APP::Window>();
+		if (winView.begin() != winView.end()) {
+			const APP::Window& window = winView.get<APP::Window>(*winView.begin());
+			mousePos.x -= window.width / 2.f;
+			mousePos.z = -(mousePos.y - window.height / 2.f);
+			mousePos.y = 0.f;
+			GW::MATH::GVECTORF playerPos = transform.row4;
+			playerPos.y = 0.f;
+			mousePos.y = 0.f;
+			GW::MATH::GVECTORF targetPos = { playerPos.x + mousePos.x, 0.f, playerPos.z + mousePos.z, 0.f };
+			//UTIL::RotateTowards(registry.get<GAME::Transform>(entity), targetPos, 1.0f);
+		}
+	}
+
+	auto bossView = registry.view<GAME::Enemy_Boss, GAME::Transform>();
+	if (bossView.begin() != bossView.end()) {
+		GW::MATH::GVECTORF targetPos = bossView.get<GAME::Transform>(bossView.front()).matrix.row4;
+		//UTIL::RotateTowards(registry.get<GAME::Transform>(entity), targetPos, 0.1f);
+	}
 }
 
 CONNECT_COMPONENT_LOGIC()

@@ -22,7 +22,7 @@ namespace UTIL
 	struct Input
 	{
 		GW::INPUT::GController gamePads; // controller support
-		GW::INPUT::GInput immediateInput; // twitch keybaord/mouse
+		GW::INPUT::GInput immediateInput; // twitch keyboard/mouse
 		GW::INPUT::GBufferedInput bufferedInput; // event keyboard/mouse
 	};
 

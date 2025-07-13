@@ -794,7 +794,7 @@ namespace DRAW
 		vkDestroyShaderModule(vulkanRenderer.device, vulkanRenderer.fragmentShader, nullptr);
 		vkDestroyPipelineLayout(vulkanRenderer.device, vulkanRenderer.pipelineLayout, nullptr);
 		vkDestroyPipeline(vulkanRenderer.device, vulkanRenderer.pipeline, nullptr);
-		
+
 		registry.remove<UI::UIManager>(registry.view<UI::UIManager>().front());
 	}
 

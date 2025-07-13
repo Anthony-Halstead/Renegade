@@ -1,4 +1,4 @@
-#include "GameComponents.h"
+﻿#include "GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../DRAW/DrawComponents.h"
 #include "../AUDIO/AudioSystem.h"
@@ -36,7 +36,7 @@ namespace GAME
 		}
 	}
 
-	void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
+	/*void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
 	{
 		GW::MATH::GQUATERNIONF rotation;
 		GW::MATH::GVECTORF scale;
@@ -52,7 +52,7 @@ namespace GAME
 		GW::MATH::GQuaternion::SetByMatrixF(transform.matrix, rotation);
 		GW::MATH::GQuaternion::MultiplyQuaternionF(obb.rotation, rotation, obb.rotation);
 
-	}
+	}*/
 
 	void BounceEnemy(const GW::MATH::GVECTORF& transform, GW::MATH::GVECTORF& velocity, const GW::MATH::GOBBF& obb)
 	{
@@ -91,186 +91,141 @@ namespace GAME
 	}
 
 	// Update functions
+	void UpdatePosition(entt::registry& reg)
+	{
+		const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
+
 
 	void UpdatePosition(entt::registry& registry)
 	{
-		auto ents = registry.view<Transform, DRAW::MeshCollection>();
-		const double dt = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+	 const double dt = reg.ctx<UTIL::DeltaTime>().dtSec;
 
-		for (auto ent : ents)
-		{
-			Transform& transform = registry.get<Transform>(ent);
-			if (auto vel = registry.try_get<Velocity>(ent))
-			{
-				auto& tr = transform.matrix.row4;
-				tr.x += vel->vec.x * dt;
-				tr.y += vel->vec.y * dt;
-				tr.z += vel->vec.z * dt;
-			}
+    auto movers = reg.view<Transform, DRAW::MeshCollection>();
+    for (auto e : movers)
+    {
+        auto& T = movers.get<Transform>(e);
+        if (auto* V = reg.try_get<Velocity>(e))
+        {
+            auto& p = T.matrix.row4;          
+            p.x += V->vec.x * dt;
+            p.y += V->vec.y * dt;
+            p.z += V->vec.z * dt;
+        }
 
-			DRAW::MeshCollection& meshes = registry.get<DRAW::MeshCollection>(ent);
+        if (reg.all_of<DRAW::OBB>(e))
+        {
+            const auto& local = movers.get<DRAW::MeshCollection>(e).obb;
+            reg.get<DRAW::OBB>(e).obb = UTIL::BuildOBB(local, T);
+        }
 
-			for (auto it = meshes.entities.begin(); it != meshes.entities.end(); /* no ++ */)
-			{
-				if (!registry.valid(*it))            // corpse found?
-				{
-					it = meshes.entities.erase(it);   // remove pointer to dead child
-					continue;                         // stay on same iterator slot
-				}
+        auto& collection = movers.get<DRAW::MeshCollection>(e);
+        for (auto it = collection.entities.begin(); it != collection.entities.end(); /* manual ++ */)
+        {
+            if (!reg.valid(*it)) {           
+                it = collection.entities.erase(it);
+                continue;                    
+            }
 
-				entt::entity mesh = *it; ++it;        // advance iterator only when valid
-
-				// normal per-mesh update
-				DRAW::GPUInstance& gpu = registry.get<DRAW::GPUInstance>(mesh);
-				gpu.transform = transform.matrix;
-			}
-		}
+            entt::entity mesh = *it; ++it;    
+            if (reg.all_of<DRAW::GPUInstance>(mesh))
+                reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
+        }
+    }
 	}
 
-	void UpdateCollide(entt::registry& registry)
+	void UpdateCollide(entt::registry& reg)
 	{
-		entt::basic_view collidables = registry.view<Transform, DRAW::MeshCollection, Collidable>();
+		const float dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
-		for (auto ent : collidables)
-		{
-			for (auto otherEnt : collidables)
+		auto colliders = reg.view<DRAW::OBB, Collidable>();
+
+		auto HandlePair = [&](entt::entity a, entt::entity b)
 			{
-				if (otherEnt == ent) continue;
 
-				GW::MATH::GOBBF obb = registry.get<DRAW::MeshCollection>(ent).obb;
-				Transform& transform = registry.get<Transform>(ent);
-
-				SetUpOBB(obb, transform);
-
-				GW::MATH::GOBBF otherObb = registry.get<DRAW::MeshCollection>(otherEnt).obb;
-				Transform otherTransform = registry.get<Transform>(otherEnt);
-
-				SetUpOBB(otherObb, otherTransform);
-
-				GW::I::GCollisionInterface::GCollisionCheck hasCollided;
-				GW::MATH::GCollision::TestOBBToOBBF(obb, otherObb, hasCollided);
-
-				if (hasCollided == GW::I::GCollisionInterface::GCollisionCheck::COLLISION)
+				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy>(b) &&
+					!reg.any_of<Hit>(b))
 				{
-					// Bullets hit wall
-					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Obstacle>(otherEnt)) registry.emplace_or_replace<Destroy>(ent);
-						if (registry.any_of<Bullet>(otherEnt) && registry.any_of<Obstacle>(ent)) registry.emplace_or_replace<Destroy>(otherEnt);
-					}
+					if (auto* o = reg.try_get<BulletOwner>(a))
+						if (o->owner == b || !reg.any_of<Player>(o->owner)) return;
 
-					// Player hit wall
-					{
-						if (registry.any_of<Player>(ent) && registry.any_of<Obstacle>(otherEnt)) BlockPlayer(transform.matrix.row4, otherObb, (*registry.ctx().get<UTIL::Config>().gameConfig).at("Player").at("speed").as<float>(), registry.ctx().get<UTIL::DeltaTime>().dtSec);
-					}
-
-					// Enemy hit wall
-					{
-						if (registry.any_of<Enemy>(ent) && registry.any_of<Obstacle>(otherEnt))
-						{
-							GW::MATH::GVECTORF& velocity = registry.get<Velocity>(ent).vec;
-							BounceEnemy(transform.matrix.row4, velocity, otherObb);
-						}
-					}
-
-					// Bullets hit enemy
-					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy>(otherEnt) && !registry.any_of<Hit>(otherEnt))
-						{
-							// Prevent self-hit
-							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt || !registry.any_of<Player>(owner->owner)) {
-									// This bullet belongs to this enemy, skip
-									continue;
-								}
-							}
-							// Show current health of enemy
-							std::cout << "Enemy current health: " << registry.get<Health>(otherEnt).health << std::endl;
-							--registry.get<Health>(otherEnt).health;
-							registry.emplace<Hit>(otherEnt);
-							registry.emplace_or_replace<Destroy>(ent);
-							/// Debug
-							std::cout << "Enemy hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
-							///
-						}
-					}
-
-					// Bullets hit enemy boss
-					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Enemy_Boss>(otherEnt)
-							&& !registry.any_of<Hit>(otherEnt) && !registry.any_of<Invulnerability>(otherEnt))
-						{
-							// Prevent self-hit
-							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt || !registry.any_of<Player>(owner->owner)) {
-									// This bullet belongs to this enemy, skip
-									continue;
-								}
-							}
-
-							--registry.get<Health>(otherEnt).health;
-							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("EnemyBoss_Station").at("invulnPeriod").as<float>());
-							registry.emplace<Hit>(otherEnt);
-							registry.emplace_or_replace<Destroy>(ent);
-							/// Debug
-							std::cout << "Enemy Boss hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
-							///
-						}
-					}
-
-					// Bullets hit Player from Enemy
-					{
-						if (registry.any_of<Bullet>(ent) && registry.any_of<Player>(otherEnt)
-							&& !registry.any_of<Hit>(otherEnt) && !registry.any_of<Invulnerability>(otherEnt))
-						{
-							// Prevent self-hit
-							if (auto* owner = registry.try_get<BulletOwner>(ent)) {
-								if (owner->owner == otherEnt) {
-									// This bullet belongs to this Player, skip
-									continue;
-								}
-							}
-
-							--registry.get<Health>(otherEnt).health;
-							registry.emplace<Invulnerability>(otherEnt, (*registry.ctx().get<UTIL::Config>().gameConfig).at("Player").at("invulnPeriod").as<float>());
-							registry.emplace<Hit>(otherEnt);
-							registry.emplace_or_replace<Destroy>(ent);
-							/// Debug
-							std::cout << "Player hit by bullet. Current health: " << registry.get<Health>(otherEnt).health << std::endl;
-							///
-						}
-					}
-
-					// Player hit enemy
-					{
-						if (registry.any_of<Player>(ent) && registry.any_of<Enemy>(otherEnt) && !registry.any_of<Invulnerability>(ent))
-						{
-							--registry.get<Health>(ent).health;
-							registry.emplace<Invulnerability>(ent, (*registry.ctx().get<UTIL::Config>().gameConfig).at("Player").at("invulnPeriod").as<float>());
-							/// Debug
-							std::cout << "Player's current health: " << registry.get<Health>(ent).health << std::endl;
-							///
-						}
-					}
-
-
+					--reg.get<Health>(b).health;
+					reg.emplace<Hit>(b);
+					reg.emplace_or_replace<Destroy>(a);
+					return;
 				}
 
+				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy_Boss>(b) &&
+					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
+				{
+					if (auto* o = reg.try_get<BulletOwner>(a))
+						if (o->owner == b || !reg.any_of<Player>(o->owner)) return;
+
+					--reg.get<Health>(b).health;
+					reg.emplace<Invulnerability>(b,
+						reg.ctx().get<UTIL::Config>().gameConfig->at("EnemyBoss_Station")
+						.at("invulnPeriod").as<float>());
+					reg.emplace<Hit>(b);
+					reg.emplace_or_replace<Destroy>(a);
+					return;
+				}
+
+				if (reg.all_of<Bullet>(a) && reg.all_of<Player>(b) &&
+					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
+				{
+					if (auto* o = reg.try_get<BulletOwner>(a))
+						if (o->owner == b) return;
+
+					--reg.get<Health>(b).health;
+					reg.emplace<Invulnerability>(b,
+						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
+						.at("invulnPeriod").as<float>());
+					reg.emplace<Hit>(b);
+					reg.emplace_or_replace<Destroy>(a);
+					return;
+				}
+
+				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
+					!reg.any_of<Invulnerability>(a))
+				{
+					--reg.get<Health>(a).health;
+					reg.emplace<Invulnerability>(a,
+						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
+						.at("invulnPeriod").as<float>());
+					std::cout << "Player's current health: "
+						<< reg.get<Health>(a).health << '\n';
+				}
+
+			};
+
+		for (auto itA = colliders.begin(); itA != colliders.end(); ++itA)
+		{
+			const auto& obbA = colliders.get<DRAW::OBB>(*itA).obb;
+
+			for (auto itB = std::next(itA); itB != colliders.end(); ++itB)
+			{
+				const auto& obbB = colliders.get<DRAW::OBB>(*itB).obb;
+
+				GW::I::GCollisionInterface::GCollisionCheck result;
+				GW::MATH::GCollision::TestOBBToOBBF(obbA, obbB, result);
+				if (result != GW::I::GCollisionInterface::GCollisionCheck::COLLISION)
+					continue;
+
+				HandlePair(*itA, *itB);
+				HandlePair(*itB, *itA);
 			}
 		}
 	}
+
 
 	void UpdateBullet(entt::registry& registry)
 	{
-		auto& view = registry.view <entt::exclude_t<Destroy>, Bullet>();
+		auto dt = registry.ctx().get<UTIL::DeltaTime>().dtSec;
 
-		for (auto& e : view)
+		for (auto [entity, bullet] : registry.view<Bullet>().each())
 		{
-			auto& bullet = registry.get<Bullet>(e);
-			bullet.lifetime -= registry.ctx().get<UTIL::DeltaTime>().dtSec;
+			bullet.lifetime -= dt;
 			if (bullet.lifetime <= 0.0f)
-			{
-				registry.emplace<Destroy>(e);
-			}
+				registry.emplace_or_replace<Destroy>(entity);
 		}
 	}
 

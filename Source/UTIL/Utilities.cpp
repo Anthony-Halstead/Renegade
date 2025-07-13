@@ -64,6 +64,11 @@ namespace UTIL
 			registry.emplace<GAME::Transform>(entity);
 			registry.get<GAME::Transform>(entity).matrix = registry.get<DRAW::GPUInstance>(registry.get<DRAW::MeshCollection>(entity).entities[0]).transform;
 		}
+
+		auto& T = registry.get<GAME::Transform>(entity);
+
+		const GW::MATH::GOBBF& localBox = it->second.obb;
+		registry.emplace<DRAW::OBB>(entity, DRAW::OBB{ UTIL::BuildOBB(localBox, T) });
 	}
 	GW::MATH::GVECTORF RandomPointInWindowXZ(entt::registry& registry, float marginOffset)
 	{
@@ -221,5 +226,22 @@ namespace UTIL
 	void Scale(GAME::Transform& transform, float scale)
 	{
 		GW::MATH::GMatrix::ScaleGlobalF(transform.matrix, GW::MATH::GVECTORF{ scale, scale, scale, 0 }, transform.matrix);
+	}
+	GW::MATH::GOBBF BuildOBB(const GW::MATH::GOBBF& local, const GAME::Transform& T)
+	{
+		using namespace GW::MATH;
+		GOBBF w = local;
+		GVECTORF s;  GMatrix::GetScaleF(T.matrix, s);
+		w.extent.x *= s.x;
+		w.extent.y *= s.y;
+		w.extent.z *= s.z;
+
+		GQUATERNIONF entityRot;
+		GQuaternion::SetByMatrixF(T.matrix, entityRot);
+		GQuaternion::MultiplyQuaternionF(local.rotation, entityRot, w.rotation);
+
+		w.center = T.matrix.row4;
+
+		return w;
 	}
 } // namespace UTIL

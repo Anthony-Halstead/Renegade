@@ -127,7 +127,7 @@ namespace UI
 	{
 		if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
-			if(!registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
+			if (!registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			{
 				if (GetAsyncKeyState(VK_ESCAPE) & 0x01)
 					registry.emplace_or_replace<UI::PauseScreen>(registry.view<UI::UIManager>().front());
@@ -175,21 +175,21 @@ namespace UI
 	{
 		auto& window = registry.get<APP::Window>(entity);
 		auto& ui = registry.get<UIManager>(entity);
-		
+
 		ui.blitter->ClearColor(0x0);
-		
+
 		DisplayScores(registry, ui);
 		DisplayPlayerHealth(registry, ui, window);
-		
+
 		unsigned int* color_pix;
-		
+
 		ui.overlay->LockForUpdate(window.width * window.height, &color_pix);
 		ui.blitter->ExportResult(false, window.width, window.height, 0, 0, color_pix, nullptr, nullptr);
 
 		DisplayTitleScreen(registry, ui, window, color_pix);
 		DisplayWinLoseScreen(registry, ui, window, color_pix);
 		DisplayPauseScreen(registry, ui, window, color_pix);
-		
+
 		ui.overlay->Unlock();
 		ui.overlay->TransferOverlay();
 		ui.overlay->RenderOverlay();

@@ -1,6 +1,7 @@
 #include "DrawComponents.h"
 #include "../GAME/GameComponents.h"
 #include "../CCL.h"
+#include "../UTIL/Utilities.h"
 
 namespace DRAW
 {
@@ -70,6 +71,7 @@ namespace DRAW
 					textures.alphaIndex,
 					textures.specularIndex
 					});
+
 			}
 			if (model.isCollidable)
 			{

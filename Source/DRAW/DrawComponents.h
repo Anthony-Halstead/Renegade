@@ -91,6 +91,8 @@ namespace DRAW
 	struct VulkanGPUInstanceBuffer
 	{
 		unsigned long long element_count = 1;
+		unsigned long long min_capacity = 16;
+		unsigned idleFrames = 0;
 		std::vector<VkBuffer> buffer;
 		std::vector<VkDeviceMemory> memory;
 	};
@@ -130,7 +132,9 @@ namespace DRAW
 		std::vector<entt::entity> entities;
 		GW::MATH::GOBBF obb;
 	};
-
+	struct OBB {
+		GW::MATH::GOBBF obb;
+	};
 	struct ModelManager {
 		std::map<std::string, MeshCollection> models;
 	};

@@ -1,6 +1,7 @@
 #include "DrawComponents.h"
 #include "../GAME/GameComponents.h"
 #include "../CCL.h"
+#include "../UTIL/Utilities.h"
 
 namespace DRAW
 {
@@ -70,6 +71,7 @@ namespace DRAW
 					textures.alphaIndex,
 					textures.specularIndex
 					});
+
 			}
 			if (model.isCollidable)
 			{
@@ -87,9 +89,13 @@ namespace DRAW
 		}
 	};
 
-	void Destroy_MeshCollection(entt::registry& registry, entt::entity entity) {
-		MeshCollection mesh = registry.get<MeshCollection>(entity);
-		for (auto ent : mesh.entities) registry.destroy(ent);
+	void Destroy_MeshCollection(entt::registry& registry, entt::entity entity)
+	{
+		auto& col = registry.get<DRAW::MeshCollection>(entity);
+		for (auto child : col.entities)
+			if (registry.valid(child))
+				registry.destroy(child);
+		col.entities.clear();
 	}
 
 	CONNECT_COMPONENT_LOGIC()

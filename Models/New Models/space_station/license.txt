@@ -1,0 +1,11 @@
+Model Information:
+* title:	Space station
+* source:	https://sketchfab.com/3d-models/space-station-edf17c3d57584cf2acefc72ecccb8058
+* author:	FPSunreal (https://sketchfab.com/FPSunreal)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Space station" (https://sketchfab.com/3d-models/space-station-edf17c3d57584cf2acefc72ecccb8058) by FPSunreal (https://sketchfab.com/FPSunreal) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

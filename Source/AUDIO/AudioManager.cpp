@@ -59,7 +59,7 @@ namespace AUDIO
 
 		AudioSystem::SetPlaybackMode(PlaybackMode::MANUAL);
 
-		const std::string defaultKey = "menu";
+		const std::string defaultKey = "intro";
 		auto found = musicHandle.tracks.find(defaultKey);
 		if (found != musicHandle.tracks.end()) {
 			if (-found->second.Play(true)) {

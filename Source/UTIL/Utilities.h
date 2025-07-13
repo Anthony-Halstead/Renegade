@@ -47,6 +47,7 @@ namespace UTIL
 
 	bool ScaleTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetScale, float step);
 	void Scale(GAME::Transform& transform, float scale);
+	GW::MATH::GOBBF BuildOBB(const GW::MATH::GOBBF& local, const GAME::Transform& T);
 
 } // namespace UTIL
 #endif // !UTILITIES_H_

@@ -2754,7 +2754,7 @@ namespace gtl
 		public:
 
 			// creates an iterator with the proper values
-			explicit iterator(uInt32 i = 0u, const Arbitrator* a = 0u) : index(i), envoy(a) { }
+			explicit iterator(uInt32 i = 0u, const Arbitrator* a = 0u) : index(i), envoy(a) {}
 
 			T* operator->() const { return &envoy->dat[index]; }
 			T& operator*() const { return envoy->dat[index]; }
@@ -2830,7 +2830,7 @@ namespace gtl
 			const Arbitrator* envoy; // lets the iter stay informed about it's designated vector
 		public:
 			// creates an const_iterator with the proper values
-			explicit const_iterator(uInt32 i = 0u, const Arbitrator* a = 0u) : index(i), envoy(a) { }
+			explicit const_iterator(uInt32 i = 0u, const Arbitrator* a = 0u) : index(i), envoy(a) {}
 			// data accessors (const)
 			const T* operator->() const { return &envoy->dat[index]; }
 			const T& operator*() const { return envoy->dat[index]; }
@@ -3349,7 +3349,8 @@ namespace gtl
 
 		public:
 			explicit iterator(T* d = 0u, const Arbitrator* a = 0u)
-				: dat(d), navigator(a) { }
+				: dat(d), navigator(a) {
+			}
 
 			~iterator()
 			{
@@ -3439,7 +3440,8 @@ namespace gtl
 
 		public:
 			explicit const_iterator(T* d = 0u, const Arbitrator* a = 0u)
-				: dat(d), navigator(a) { }
+				: dat(d), navigator(a) {
+			}
 
 			~const_iterator()
 			{
@@ -19517,34 +19519,34 @@ namespace GW
 
 
 
-					GAMING_DEVICE_MODEL_INFORMATION info = {};
-					GetGamingDeviceModelInformation(&info);
-					if (info.vendorId == GAMING_DEVICE_VENDOR_ID_MICROSOFT)
+				GAMING_DEVICE_MODEL_INFORMATION info = {};
+				GetGamingDeviceModelInformation(&info);
+				if (info.vendorId == GAMING_DEVICE_VENDOR_ID_MICROSOFT)
+				{
+					switch (info.deviceId)
 					{
-						switch (info.deviceId)
-						{
-						case GAMING_DEVICE_DEVICE_ID_XBOX_ONE:
+					case GAMING_DEVICE_DEVICE_ID_XBOX_ONE:
 
-						case GAMING_DEVICE_DEVICE_ID_XBOX_ONE_S:
-							ResizeWindow(1920, 1080);
-						case GAMING_DEVICE_DEVICE_ID_XBOX_ONE_X:
+					case GAMING_DEVICE_DEVICE_ID_XBOX_ONE_S:
+						ResizeWindow(1920, 1080);
+					case GAMING_DEVICE_DEVICE_ID_XBOX_ONE_X:
 
-						case GAMING_DEVICE_DEVICE_ID_XBOX_ONE_X_DEVKIT:
-							ResizeWindow(3840, 2160);
-							return this->ChangeWindowStyle(SYSTEM::GWindowStyle::FULLSCREENBORDERLESS);
-						default:
-							break;
-						}
+					case GAMING_DEVICE_DEVICE_ID_XBOX_ONE_X_DEVKIT:
+						ResizeWindow(3840, 2160);
+						return this->ChangeWindowStyle(SYSTEM::GWindowStyle::FULLSCREENBORDERLESS);
+					default:
+						break;
 					}
-					else
+				}
+				else
+				{
+					if (-this->ResizeWindow(_width, _height))
 					{
-						if (-this->ResizeWindow(_width, _height))
-						{
-							return GReturn::FAILURE;
-						}
-						return this->ChangeWindowStyle(_style);
+						return GReturn::FAILURE;
 					}
-					return GReturn::SUCCESS;
+					return this->ChangeWindowStyle(_style);
+				}
+				return GReturn::SUCCESS;
 			}
 
 			// Always returns success to keep parity with other platforms
@@ -19579,10 +19581,10 @@ namespace GW
 							auto titleBar = winrt::Windows::ApplicationModel::Core::CoreApplication::GetCurrentView().TitleBar();
 							titleBar.ExtendViewIntoTitleBar(false);
 						}); process.get();
-						ResizeWindow(_width, _height);
+					ResizeWindow(_width, _height);
 
-						SetInteralData(_x, _y, _width, _height, SYSTEM::GWindowStyle::WINDOWEDBORDERED);
-						break;
+					SetInteralData(_x, _y, _width, _height, SYSTEM::GWindowStyle::WINDOWEDBORDERED);
+					break;
 				}
 
 				case SYSTEM::GWindowStyle::WINDOWEDBORDERLESS:
@@ -19600,10 +19602,10 @@ namespace GW
 							titleBar.ExtendViewIntoTitleBar(true);
 						}); process.get();
 
-						ResizeWindow(_width, _height);
+					ResizeWindow(_width, _height);
 
-						SetInteralData(_x, _y, _width, _height, SYSTEM::GWindowStyle::WINDOWEDBORDERLESS);
-						break;
+					SetInteralData(_x, _y, _width, _height, SYSTEM::GWindowStyle::WINDOWEDBORDERLESS);
+					break;
 				}
 
 				// might be possible, but needed to move on to other libraries before graduation
@@ -19638,8 +19640,8 @@ namespace GW
 
 						}); process.get();
 
-						SetInteralData(0, 0, x, y, SYSTEM::GWindowStyle::FULLSCREENBORDERED);
-						break;
+					SetInteralData(0, 0, x, y, SYSTEM::GWindowStyle::FULLSCREENBORDERED);
+					break;
 				}
 
 				case SYSTEM::GWindowStyle::FULLSCREENBORDERLESS:
@@ -19663,8 +19665,8 @@ namespace GW
 
 							return GReturn::SUCCESS;
 						}); process.get();
-						SetInteralData(0, 0, x, y, SYSTEM::GWindowStyle::FULLSCREENBORDERLESS);
-						break;
+					SetInteralData(0, 0, x, y, SYSTEM::GWindowStyle::FULLSCREENBORDERLESS);
+					break;
 				}
 
 				// might be possible, but needed to move on to other libraries before graduation
@@ -19688,7 +19690,7 @@ namespace GW
 						auto view = winrt::Windows::UI::ViewManagement::ApplicationView::GetForCurrentView();
 						view.Title(INTERNAL::utf8_decode(std::string(_newName)));
 					}); process.get();
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			// might be possible, but needed to move on to other libraries before graduation
@@ -19746,8 +19748,8 @@ namespace GW
 						}
 					}); process.get();
 
-					// if failing on desktop and you don't think it should, check to make sure you are not going below the allowed size for the app window - that can be found in GApp_uwp
-					return sizeWorked ? GReturn::SUCCESS : GReturn::FAILURE;
+				// if failing on desktop and you don't think it should, check to make sure you are not going below the allowed size for the app window - that can be found in GApp_uwp
+				return sizeWorked ? GReturn::SUCCESS : GReturn::FAILURE;
 			}
 
 			GReturn Maximize() override
@@ -19780,8 +19782,8 @@ namespace GW
 						auto size = view.VisibleBounds();
 						_outWidth = static_cast<unsigned int>(size.Width);
 					}); process.get();
-					//_outWidth = m_WindowWidth;
-					return  GReturn::SUCCESS;
+				//_outWidth = m_WindowWidth;
+				return  GReturn::SUCCESS;
 			}
 
 			GReturn GetHeight(unsigned int& _outHeight) const override
@@ -19792,8 +19794,8 @@ namespace GW
 						auto size = view.VisibleBounds();
 						_outHeight = static_cast<unsigned int>(size.Height);
 					}); process.get();
-					//_outHeight = m_WindowHeight;
-					return  GReturn::SUCCESS;
+				//_outHeight = m_WindowHeight;
+				return  GReturn::SUCCESS;
 			}
 
 			GReturn GetClientWidth(unsigned int& _outClientWidth) const override
@@ -19825,7 +19827,7 @@ namespace GW
 						_outX = static_cast<unsigned int>(size.X);
 					}); process.get();
 
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			GReturn GetY(unsigned int& _outY) const override
@@ -19837,7 +19839,7 @@ namespace GW
 						_outY = static_cast<unsigned int>(size.Y);
 					}); process.get();
 
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			GReturn GetClientTopLeft(unsigned int& _outX, unsigned int& _outY) const override
@@ -19853,7 +19855,7 @@ namespace GW
 						_outY = static_cast<unsigned int>(windowRect.Y);
 					}); process.get();
 
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			// returns the CoreWindow
@@ -19869,7 +19871,7 @@ namespace GW
 						_outUniversalWindowHandle.display = nullptr;
 					}); process.get();
 
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			GReturn IsFullscreen(bool& _outIsFullscreen) const override
@@ -19880,7 +19882,7 @@ namespace GW
 						_outIsFullscreen = view.IsFullScreenMode();
 					}); process.get();
 
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			GReturn IsFocus(bool& _outIsFocus) const override
@@ -20182,7 +20184,7 @@ namespace GW
 						// send a close message so our app window know to close down
 						winrt::Windows::ApplicationModel::Core::CoreApplication::Exit();
 					});
-				return result; // did it work?
+					return result; // did it work?
 			}
 
 			static GReturn PreviousExecutionStateWasTerminated(bool& _outWasTerminated)
@@ -20258,7 +20260,7 @@ namespace GW
 						std::cout << "GApp: desktop main() routine returned " << ret << std::endl;
 						// send a close message so our app window know to close down
 					});
-				return result; // did it work?
+					return result; // did it work?
 			}
 			// in case we need to debug program shutdown
 			~GAppImplementation() { run.Converge(0); }
@@ -52266,7 +52268,7 @@ namespace GW
 							});
 					}); process.get();
 
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			GReturn Create(const GW::SYSTEM::GWindow _gWindow) {
@@ -54452,7 +54454,7 @@ namespace GW
 							});
 					}); process.get();
 
-					return GReturn::SUCCESS;
+				return GReturn::SUCCESS;
 			}
 
 			GReturn Create(const GW::SYSTEM::GWindow _gWindow) {

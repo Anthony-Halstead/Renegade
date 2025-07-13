@@ -5,6 +5,7 @@
 #include "../CCL.h"
 #include "../APP/Window.hpp"
 #include "../UI/UIComponents.h"
+#include <iostream>
 
 namespace GAME
 {
@@ -91,30 +92,37 @@ namespace GAME
 
 	// Update functions
 
-	void UpdatePosition(entt::registry& registry) {
-		entt::basic_view ents = registry.view<Transform, DRAW::MeshCollection>();
-		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+	void UpdatePosition(entt::registry& registry)
+	{
+		auto ents = registry.view<Transform, DRAW::MeshCollection>();
+		const double dt = registry.ctx().get<UTIL::DeltaTime>().dtSec;
 
 		for (auto ent : ents)
 		{
 			Transform& transform = registry.get<Transform>(ent);
-			Velocity* velocity = registry.try_get<Velocity>(ent);
-
-			if (velocity != nullptr)
+			if (auto vel = registry.try_get<Velocity>(ent))
 			{
-				GW::MATH::GVECTORF& translate = transform.matrix.row4;
-
-				translate.x += velocity->vec.x * deltaTime;
-				translate.y += velocity->vec.y * deltaTime;
-				translate.z += velocity->vec.z * deltaTime;
+				auto& tr = transform.matrix.row4;
+				tr.x += vel->vec.x * dt;
+				tr.y += vel->vec.y * dt;
+				tr.z += vel->vec.z * dt;
 			}
 
-			DRAW::MeshCollection meshes = registry.get<DRAW::MeshCollection>(ent);
+			DRAW::MeshCollection& meshes = registry.get<DRAW::MeshCollection>(ent);
 
-			for (auto mesh : meshes.entities)
+			for (auto it = meshes.entities.begin(); it != meshes.entities.end(); /* no ++ */)
 			{
-				DRAW::GPUInstance& gpuInstance = registry.get<DRAW::GPUInstance>(mesh);
-				gpuInstance.transform = transform.matrix;
+				if (!registry.valid(*it))            // corpse found?
+				{
+					it = meshes.entities.erase(it);   // remove pointer to dead child
+					continue;                         // stay on same iterator slot
+				}
+
+				entt::entity mesh = *it; ++it;        // advance iterator only when valid
+
+				// normal per-mesh update
+				DRAW::GPUInstance& gpu = registry.get<DRAW::GPUInstance>(mesh);
+				gpu.transform = transform.matrix;
 			}
 		}
 	}
@@ -303,6 +311,17 @@ namespace GAME
 
 	void Update(entt::registry& registry, entt::entity entity)
 	{
+#ifdef _DEBUG                     // dump once, in debug builds only
+		static bool dumped = false;
+		if (!dumped) {
+			auto& mm = registry.ctx().get<DRAW::ModelManager>();
+			for (auto& [name, col] : mm.models)
+				std::cout << "[ModelManager] " << name
+				<< "  meshes=" << col.entities.size() << '\n';
+			dumped = true;
+		}
+#endif
+
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			//RefreshBoundsFromWindow(registry);

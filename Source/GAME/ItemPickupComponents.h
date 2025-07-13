@@ -6,7 +6,7 @@ namespace GAME
 {
     // tags & data
     struct ItemPickup {};                               // marks a drop in the world
-    enum class PickupType : uint8_t { Health, Shield, Weapon };
+    enum class PickupType : uint8_t { Health, Shield, Ammo };
     struct PickupData { PickupType type; };
     struct PickupVelocity { float zPerSecond; };
 

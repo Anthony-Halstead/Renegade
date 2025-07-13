@@ -12,7 +12,7 @@ ItemDropConfig& ItemDropConfig::Get()
     if (first)
     {
         first = false;
-        auto& ctx = entt::locator<entt::registry>::value().ctx();   // global registry
+        auto& ctx = entt::locator<entt::registry>::value().ctx();
         if (ctx.contains<UTIL::Config>())
         {
             const auto& ini = *ctx.get<UTIL::Config>().gameConfig;

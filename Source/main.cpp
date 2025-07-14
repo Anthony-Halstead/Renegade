@@ -180,6 +180,29 @@ void GameplayBehavior(entt::registry& registry)
 	playerTransform.matrix = identity;
 	playerTransform.matrix.row4.z = -20.0f;
 
+	// Initilize player direction to face forward
+	float mouseX, mouseY;
+	auto winView = registry.view<APP::Window>();
+	UTIL::Input input;
+	input.immediateInput.GetMousePosition(mouseX, mouseY);
+	const APP::Window& window = winView.get<APP::Window>(*winView.begin());
+
+	GW::MATH::GVECTORF playerPosition = playerTransform.matrix.row4;
+	float centeredMouseX = mouseX - (window.width / 2.0f);
+	float centeredMouseY = mouseY - (window.height / 2.0f);
+
+	// Calculate target position in world space
+	GW::MATH::GVECTORF targetPosition = {
+		playerPosition.x + centeredMouseX,
+		0.0f,
+		playerPosition.z - centeredMouseY,
+		0.0f
+	};
+
+	// Instantly rotate to face the mouse
+	UTIL::RotateTowards(playerTransform, targetPosition, FLT_MAX);
+
+
 	registry.emplace<GAME::Health>(player, playerHealth);
 	registry.emplace<GAME::Transform>(player, playerTransform);
 

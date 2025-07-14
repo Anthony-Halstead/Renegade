@@ -145,11 +145,14 @@ void PlayerRotation(entt::registry& registry, entt::entity& entity, GW::MATH::GM
 			float centeredMouseX = mouseX - (window.width / 2.0f);
 			float centeredMouseY = mouseY - (window.height / 2.0f);
 
+			// Get player position
+			GW::MATH::GVECTORF playerPosition = transform.row4;
+
 			// Create screen-to-world direction
 			GW::MATH::GVECTORF targetPosition = {
-				-centeredMouseX,
+				playerPosition.x + centeredMouseX,
 				0.0f,
-				centeredMouseY,
+				playerPosition.z - centeredMouseY,
 				0.0f
 			};
 
@@ -165,7 +168,7 @@ void PlayerRotation(entt::registry& registry, entt::entity& entity, GW::MATH::GM
 
 			if (distanceSq > 10.0f)
 			{
-				UTIL::RotateTowards(registry.get<GAME::Transform>(entity), targetPosition, maxStepRad);
+				UTIL::RotateTowards(registry.get<GAME::Transform>(entity), targetPosition, FLT_MAX);
 			}
 		}
 	}

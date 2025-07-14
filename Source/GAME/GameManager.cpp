@@ -6,6 +6,7 @@
 #include "../APP/Window.hpp"
 #include "../UI/UIComponents.h"
 #include <iostream>
+#include "../AI/AIComponents.h"
 
 namespace GAME
 {
@@ -93,12 +94,7 @@ namespace GAME
 	// Update functions
 	void UpdatePosition(entt::registry& reg)
 	{
-		const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
-
-
-	void UpdatePosition(entt::registry& registry)
-	{
-	 const double dt = reg.ctx<UTIL::DeltaTime>().dtSec;
+	 const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
     auto movers = reg.view<Transform, DRAW::MeshCollection>();
     for (auto e : movers)
@@ -185,7 +181,7 @@ namespace GAME
 				}
 
 				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
-					!reg.any_of<Invulnerability>(a))
+					!reg.any_of<Invulnerability>(a) && !reg.any_of<AI::Kamikaze>(b))
 				{
 					--reg.get<Health>(a).health;
 					reg.emplace<Invulnerability>(a,
@@ -215,7 +211,6 @@ namespace GAME
 			}
 		}
 	}
-
 
 	void UpdateBullet(entt::registry& registry)
 	{

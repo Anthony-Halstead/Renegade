@@ -180,6 +180,7 @@ namespace GAME
 					return;
 				}
 
+				// Prevents damage from kamikaze enemies colliding with player, only explosion damages player
 				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Invulnerability>(a) && !reg.any_of<AI::Kamikaze>(b))
 				{

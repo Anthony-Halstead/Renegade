@@ -212,112 +212,60 @@ namespace AI
 
 	void UpdateBossOneBehavior(entt::registry& registry, entt::entity& entity)
 	{
-		static unsigned int bossWaveCount = 0;
+		// Only proceed if the boss entity is valid and alive
+		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
+			return;
 
+		auto& hp = registry.get<GAME::Health>(entity);
+		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
+
+		// Only spawn if boss is alive
+		if (hp.health <= 0)
+			return;
+
+		// Decrement spawn timer
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		entt::basic_view boss = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
-		entt::basic_view lesserEnemies = registry.view<GAME::Enemy>();
+		spawn.spawnTimer -= (float)deltaTime;
 
-		for (auto ent : boss)
+		// Check for lesser enemies
+		auto lesserEnemies = registry.view<GAME::Enemy>();
+		if (spawn.spawnTimer <= 0.0f && lesserEnemies.empty())
 		{
-			GAME::Health hp = registry.get<GAME::Health>(ent);
+			spawn.spawnTimer = 20.0f; // Reset timer
 
-			auto& spawn = registry.get<GAME::SpawnEnemies>(ent);
-			spawn.spawnTimer -= (float)deltaTime;
-
-			entt::entity enemySpawn{};
-
-			if (spawn.spawnTimer <= 0.0f)
-			{
-				spawn.spawnTimer = 20.0f;
-				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-				unsigned int bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned int>();
-
-				if (bossHealth && lesserEnemies.empty())
-				{
-					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
-
-					auto& bossTransform = registry.get<GAME::Transform>(ent);
-					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-					//SpawnFlock(registry, 20, bossPos);
-					//SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
-				}
-			}
-		}
-
-		// Check if boss and enemy views are empty
-		if (registry.view<GAME::Enemy>().empty() && registry.view<GAME::Enemy_Boss>().empty())
-		{
-			std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-			auto bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
-
-			if (bossWaveCount < bossCount)
-			{
-				if (bossWaveCount == 0)
-					SpawnBoss(registry, "EnemyBoss_UFO");
-				++bossWaveCount;
-			}
+			// Spawn a wave specific to this boss
+			auto& bossTransform = registry.get<GAME::Transform>(entity);
+			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+			SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
 		}
 	}
 	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity& entity)
 	{
-		//static unsigned int bossWaveCount = 1;
+		// Only proceed if the boss entity is valid and alive
+		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
+			return;
 
+		auto& hp = registry.get<GAME::Health>(entity);
+		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
+
+		// Only spawn if boss is alive
+		if (hp.health <= 0)
+			return;
+
+		// Decrement spawn timer
 		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		entt::basic_view boss = registry.view<GAME::Enemy_Boss, GAME::Health, GAME::SpawnEnemies>();
-		entt::basic_view lesserEnemies = registry.view<GAME::Enemy>();
+		spawn.spawnTimer -= (float)deltaTime;
 
-		for (auto ent : boss)
+		// Check for lesser enemies
+		auto lesserEnemies = registry.view<GAME::Enemy>();
+		if (spawn.spawnTimer <= 0.0f && lesserEnemies.empty())
 		{
-			GAME::Health hp = registry.get<GAME::Health>(ent);			
+			spawn.spawnTimer = 20.0f; // Reset timer
 
-			auto& spawn = registry.get<GAME::SpawnEnemies>(ent);
-			spawn.spawnTimer -= (float)deltaTime;
-
-			entt::entity enemySpawn{};
-
-			if (spawn.spawnTimer <= 0.0f)
-			{
-				spawn.spawnTimer = 20.0f;
-				std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-				unsigned int bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned int>();
-
-				if (bossHealth && lesserEnemies.empty())
-				{
-					unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
-
-					auto& bossTransform = registry.get<GAME::Transform>(ent);
-					GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-					//SpawnFlock(registry, 20, bossPos);
-					//SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
-				}
-			}
-		}
-
-		// Check if boss and enemy views are empty
-		if (registry.view<GAME::Enemy>().empty() && registry.view<GAME::Enemy_Boss>().empty())
-		{
-			//// access boss count from defaults.ini file and decrement
-			//std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-			//auto bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
-			////SpawnBoss(registry, "EnemyBoss_UFO");
-
-			//if (bossWaveCount < bossCount)
-			//{
-			//	if (bossWaveCount == 0)
-			//		SpawnBoss(registry, "EnemyBoss_UFO");
-			//	++bossWaveCount;
-			//}
-			//else
-			//{
-			//	// All bosses defeated, trigger game over
-			//	registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
-			//	std::cout << "You win, good job!" << std::endl;
-			//}
-
-			// All bosses defeated, trigger game over
-			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
-			std::cout << "You win, good job!" << std::endl;
+			// Spawn a wave specific to this boss
+			auto& bossTransform = registry.get<GAME::Transform>(entity);
+			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+			SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy2", 10);
 		}
 	}
 	void UpdateBossThreeBehavior(entt::registry& registry, entt::entity& entity)
@@ -485,13 +433,23 @@ namespace AI
 		entt::basic_view bossEnemies = registry.view<GAME::Enemy_Boss>();
 		entt::basic_view lesserEnemies = registry.view<GAME::Enemy>();
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-		unsigned int bossHealth = (*config).at("EnemyBoss_Station").at("hitpoints").as<unsigned int>();
+		unsigned int bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned int>();
 		unsigned int bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
 
 		entt::entity bossEntity{};
 
 		for (auto ent : bossEnemies)
 		{
+			if (registry.all_of<GAME::BossTitle>(ent))
+			{
+				auto& title = registry.get<GAME::BossTitle>(ent);
+				if (title.name == "EnemyBoss_Station")
+					UpdateBossOneBehavior(registry, ent);														
+				else if (title.name == "EnemyBoss_UFO")
+					UpdateBossTwoBehavior(registry, ent);
+				//else if (title.name == "EnemyBoss_Final")
+				//	SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy3", 10);
+			}
 			bossEntity = ent;
 		}
 
@@ -514,9 +472,7 @@ namespace AI
 
 						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
 						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-						//SpawnFlock(registry, 20, bossPos);
-						//SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
-						//SpawnKamikaze(registry, bossPos);
+						SpawnFlock(registry, 20, bossPos);
 					}
 				}
 			}
@@ -555,6 +511,7 @@ namespace AI
 				if (hp.health <= 0)
 				{
 					registry.emplace<GAME::Destroy>(ent);
+					registry.remove<GAME::Enemy>(ent);
 				}
 			}
 
@@ -660,7 +617,7 @@ namespace AI
 				{
 					Damage::Explosion(registry, ent);
 					registry.emplace_or_replace<GAME::Destroy>(ent);
-					continue;
+					registry.remove<GAME::Enemy>(ent);
 				}
 			}
 
@@ -679,21 +636,57 @@ namespace AI
 		for (auto ent : destroy) registry.destroy(ent);
 	}
 
+	void UpdateBossSpawn(entt::registry& registry, entt::entity entity, unsigned int& bossWaveCount)
+	{
+		/*if (registry.all_of<GAME::BossTitle>(entity))
+		{
+			auto& title = registry.get<GAME::BossTitle>(entity);
+			if (title.name == "EnemyBoss_Station")
+				UpdateBossOneBehavior(registry, entity);
+			else if (title.name == "EnemyBoss_UFO")
+				UpdateBossTwoBehavior(registry, entity);
+			else if (title.name == "EnemyBoss_Final")
+				UpdateBossThreeBehavior(registry, entity);
+		}*/
+
+		// Check if boss and enemy views are empty
+		if (registry.view<GAME::Enemy>().empty() && registry.view<GAME::Enemy_Boss>().empty())
+		{
+			// access boss count from defaults.ini file and decrement
+			std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+			auto bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
+			//SpawnBoss(registry, "EnemyBoss_UFO");
+
+			if (bossWaveCount < bossCount)
+			{
+				if (bossWaveCount == 0)
+					SpawnBoss(registry, "EnemyBoss_UFO");
+				++bossWaveCount;
+			}
+			else
+			{
+				// All bosses defeated, trigger game over
+				registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
+				std::cout << "You win, good job!" << std::endl;
+			}
+		}
+	}
+
 	void Update(entt::registry& registry, entt::entity entity)
 	{
+		static unsigned int bossWaveCount = 0;
+
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			std::size_t active = registry.view<DRAW::OBB, GAME::Collidable>().size_hint();
 			//std::cout << "Active collidables: " << active << '\n';
+			UpdateAIDestroy(registry);
 			UpdateEnemies(registry, entity);
 			UpdateKamikazeEnemy(registry);
 			UpdateFlockGoal(registry);
-			UpdateFlock(registry);
-			UpdateBossOneBehavior(registry, entity);
-			UpdateBossTwoBehavior(registry, entity);
-
+			UpdateFlock(registry);			
+			UpdateBossSpawn(registry, entity, bossWaveCount);
 			UpdateFormation(registry);
-
 			UpdateLocomotion(registry);
 			UpdateStandardProjectile(registry);
 			EnemyInvulnerability(registry, registry.ctx().get<UTIL::DeltaTime>().dtSec);

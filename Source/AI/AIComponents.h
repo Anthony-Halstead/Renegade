@@ -54,7 +54,8 @@ namespace AI
 	struct ReturningToPosition {};
 	struct HoldFire { float holdTime = 0.0f; };
 	struct ShotsFired { int count = 0; };
-	struct EnemyBomber {};
+	struct Kamikaze {};
+	struct SpawnKamikazeEnemy { float spawnTimer = 3.0f; };
 	struct RushTarget { GW::MATH::GVECTORF trg; };
 	struct BossHalfHealth {};
 }

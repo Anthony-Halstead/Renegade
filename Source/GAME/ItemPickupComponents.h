@@ -1,23 +1,24 @@
-#pragma once
-
-#include "../UTIL/Utilities.h"
+﻿#ifndef ITEM_PICKUP_COMPONENTS_H_
+#define ITEM_PICKUP_COMPONENTS_H_
 
 namespace GAME
 {
-    // tags & data
-    struct ItemPickup {};                               // marks a drop in the world
-    enum class PickupType : uint8_t { Health, Shield, Ammo };
-    struct PickupData { PickupType type; };
-    struct PickupVelocity { float zPerSecond; };
+	struct ItemDropConfig
+	{
+		float  dropChance;                      // Chance of a drop spawning
+		float  weights[3];    // Chance of each type Health, Shield, Weapon
+		float  fallSpeed;                        // units / sec (-Z) speed of the drop
+		float  despawnZ;                        // kill the drop when below this
+	};
+	enum class PickupType { Health, Shield, Ammo };
+	// tags & data
+	struct PickupManager { ItemDropConfig itemDropConfig; };
+	struct ItemPickup { PickupType type; };                               // marks a drop in the world
 
-    // run-time tunables, read from GameConfig.ini
-    struct ItemDropConfig
-    {
-		float  dropChance = 0.20f;                      // Chance of a drop spawning
-		float  weights[3] = { 0.40f, 0.35f, 0.25f };    // Chance of each type Health, Shield, Weapon
-		float  fallSpeed = 2.5f;                        // units / sec (-Z) speed of the drop
-        float  despawnZ = -50.f;                        // kill the drop when below this
-        static ItemDropConfig& Get();                   // singleton accessor
-    };
+	struct PickupVelocity { float zPerSecond; };
+	void ConstructConfig(entt::registry& registry, entt::entity entity);
+	void UpdatePickups(entt::registry& r, entt::entity /*unused*/);
+	PickupType WeightedPick(ItemDropConfig& c);
+	void HandlePickup(entt::registry& reg, GW::MATH::GVECTORF pos);
 }
-
+#endif

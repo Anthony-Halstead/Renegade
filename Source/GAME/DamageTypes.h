@@ -18,17 +18,30 @@ namespace Damage
 		std::cout << "Explosion triggered by entity: " << int(entity) << std::endl;
 
 		// Create damaging radius and apply damage to all entities within range
-		entt::entity e = reg.create();
+		entt::entity explosion = reg.create();
+		reg.emplace<AI::Explosion>(explosion);
 		GAME::Transform* transform = reg.try_get<GAME::Transform>(entity);
 		if (!transform) return;
 		GW::MATH::GVECTORF explosionCenter = transform->matrix.row4;
 		const float explosionRadius = (*config).at("Explosion").at("explosionRadius").as<float>();
 		std::string model = (*config).at("Explosion").at("model").as<std::string>();
-		const unsigned int explosionDamage = 1;
+		const float explosionDamage = (*config).at("Explosion").at("damage").as<float>();
 
-		// Model not loading, hitting null reference
+		// Model not appearing
+		UTIL::CreateTransform(reg, explosion, reg.get<GAME::Transform>(entity).matrix);
+		GAME::Transform* explosionTransform = reg.try_get<GAME::Transform>(explosion);
+		UTIL::CreateDynamicObjects(reg, explosion, model);
 
-		//UTIL::CreateDynamicObjects(reg, e, model);
+		// scale explosion
+		auto explosionView = reg.view<AI::Explosion, GAME::Transform>();
+		for (auto e : explosionView)
+		{
+			auto& transform = explosionView.get<GAME::Transform>(e);
+			GW::MATH::GVECTORF targetScale = { explosionRadius, explosionRadius, explosionRadius, 0 };
+			float explosionGrowth = (*config).at("Explosion").at("explosionGrowth").as<float>();
+			UTIL::ScaleTowards(transform, targetScale, explosionGrowth);
+		}
+
 		auto view = reg.view<GAME::Health, GAME::Transform>();
 		for (auto e : view)
 		{
@@ -45,6 +58,61 @@ namespace Damage
 					reg.emplace<GAME::Destroy>(e);
 					std::cout << "Entity " << int(e) << " destroyed by explosion." << std::endl;
 				}
+			}
+		}
+	}
+
+	///***This is just an idea for a basic bullet damage design, not currently used***///
+
+	//inline void Bullet(entt::registry& reg, entt::entity entity)
+	//{
+	//	std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
+
+	//	float bulletDamage = (*config).at("Bullet").at("damage").as<float>();
+	//	// This function is called when a bullet hits an entity.
+	//	// It can be used to apply damage to the hit entity.
+	//	std::cout << "Bullet hit entity: " << int(entity) << std::endl;
+	//	auto* health = reg.try_get<GAME::Health>(entity);
+	//	if (health)
+	//	{
+	//		health->health = (health->health > bulletDamage) ? health->health - bulletDamage : 0;
+	//		std::cout << "Entity " << int(entity) << " took " << bulletDamage << " damage from bullet. Remaining health: " << health->health << std::endl;
+	//		if (health->health == 0 && !reg.all_of<GAME::Destroy>(entity))
+	//		{
+	//			reg.emplace<GAME::Destroy>(entity);
+	//			std::cout << "Entity " << int(entity) << " destroyed by bullet." << std::endl;
+	//		}
+	//	}
+	//}
+
+	inline void Laser(entt::registry& reg, entt::entity entity)
+	{
+		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
+
+		// This damage will be used for laser based attacks
+		// Damage will be continous as long as the laser is hitting the target
+
+		entt::entity laserEntity = reg.create();
+		float laserDamage = (*config).at("Laser").at("damage").as<float>();
+		std::string model = (*config).at("Laser").at("model").as<std::string>();
+
+		//UTIL::CreateDynamicObjects(reg, laserEntity, model);
+		// Detect target has been hit
+		entt::basic_view target = reg.view<GAME::Player, GAME::Health, GAME::Transform>();
+		for (auto e : target)
+		{
+			if (e == entity) continue; // Don't damage self
+			// Begin inflicting damage over time
+			auto& health = target.get<GAME::Health>(e);
+			auto& t = target.get<GAME::Transform>(e);
+
+			// For as long as the laser is hitting the target, apply damage
+			// Damage is not incremental, deals the same damage per second
+			health.health = (health.health > laserDamage) ? health.health - laserDamage : 0;
+			if (health.health == 0 && !reg.all_of<GAME::Destroy>(e))
+			{
+				reg.emplace<GAME::Destroy>(e);
+				std::cout << "Entity " << int(e) << " destroyed by laser." << std::endl;
 			}
 		}
 	}

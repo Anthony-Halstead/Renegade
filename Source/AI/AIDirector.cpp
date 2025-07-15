@@ -487,7 +487,6 @@ namespace AI
 				const auto& target = registry.get<MoveTarget>(e).pos;
 				auto& timer = registry.get<AI::TimeAtPosition>(e);
 
-
 				if (UTIL::Distance(target, pos) < 0.1f)
 				{
 					timer.timeAtPosition += deltaTime;
@@ -500,7 +499,6 @@ namespace AI
 				else
 				{
 					timer.timeAtPosition = 0.0f;
-
 				}
 			}
 
@@ -525,7 +523,7 @@ namespace AI
 					spawnKamikaze -= (float)deltaTime;
 					if (spawnKamikaze <= 0.0f)
 					{
-						spawnKamikaze = 1.0f;
+						spawnKamikaze = 3.0f;
 						SpawnKamikaze(registry, registry.get<GAME::Transform>(bossEntity).matrix.row4);
 					}
 				}
@@ -638,24 +636,12 @@ namespace AI
 
 	void UpdateBossSpawn(entt::registry& registry, entt::entity entity, unsigned int& bossWaveCount)
 	{
-		/*if (registry.all_of<GAME::BossTitle>(entity))
-		{
-			auto& title = registry.get<GAME::BossTitle>(entity);
-			if (title.name == "EnemyBoss_Station")
-				UpdateBossOneBehavior(registry, entity);
-			else if (title.name == "EnemyBoss_UFO")
-				UpdateBossTwoBehavior(registry, entity);
-			else if (title.name == "EnemyBoss_Final")
-				UpdateBossThreeBehavior(registry, entity);
-		}*/
-
 		// Check if boss and enemy views are empty
 		if (registry.view<GAME::Enemy>().empty() && registry.view<GAME::Enemy_Boss>().empty())
 		{
 			// access boss count from defaults.ini file and decrement
 			std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 			auto bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
-			//SpawnBoss(registry, "EnemyBoss_UFO");
 
 			if (bossWaveCount < bossCount)
 			{

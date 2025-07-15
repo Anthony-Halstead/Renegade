@@ -578,8 +578,7 @@ namespace AI
 
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
-			std::size_t active = registry.view<DRAW::OBB, GAME::Collidable>().size_hint();
-			std::cout << "Active collidables: " << active << '\n';
+
 			UpdateEnemies(registry, entity);
 
 			UpdateFlockGoal(registry);

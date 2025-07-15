@@ -1,4 +1,4 @@
-#include "GameComponents.h"
+﻿#include "GameComponents.h"
 #include "../UTIL/Utilities.h"
 #include "../CCL.h"
 #include "../AUDIO/AudioSystem.h"
@@ -6,9 +6,9 @@
 
 
 void Invulnerability(entt::registry& registry, entt::entity& entity, const float& deltaTime);
-void Shoot(entt::registry& registry, entt::entity& entity, 
+void Shoot(entt::registry& registry, entt::entity& entity,
 	const float& deltaTime, const float& fireRate, UTIL::Input input);
-void Movement(entt::registry& registry, entt::entity& entity, 
+void Movement(entt::registry& registry, entt::entity& entity,
 	const float& deltaTime, const float& speed, UTIL::Input input);
 
 void Update(entt::registry& registry, entt::entity entity) {
@@ -37,7 +37,7 @@ void Invulnerability(entt::registry& registry, entt::entity& entity, const float
 	}
 }
 
-void Shoot(entt::registry& registry, entt::entity& entity, 
+void Shoot(entt::registry& registry, entt::entity& entity,
 	const float& deltaTime, const float& fireRate, UTIL::Input input) {
 
 	GAME::Firing* isFiring = registry.try_get<GAME::Firing>(entity);
@@ -58,8 +58,8 @@ void Shoot(entt::registry& registry, entt::entity& entity,
 	if (isFiring == nullptr)
 	{
 		bool fired = 0;
-		GW::MATH::GVECTORF velocity = GW::MATH::GIdentityVectorF;		
-				
+		GW::MATH::GVECTORF velocity = GW::MATH::GIdentityVectorF;
+
 		if (mouseLeftClickState + controllerRightTriggerState == 1.0f)
 		{
 			// Get player's forward direction
@@ -104,7 +104,7 @@ void PlayerRotation(entt::registry& registry, entt::entity& entity, GW::MATH::GM
 	input.immediateInput.GetMousePosition(mouseX, mouseY);
 	auto winView = registry.view<APP::Window>();
 	// Get transform of mouse to use for rotation
-	if (winView.begin() != winView.end()) {		
+	if (winView.begin() != winView.end()) {
 		// Rotate player using controller right stick
 		float rightStickX, rightStickY;
 		if (input.connectedControllers > 0) {
@@ -171,7 +171,7 @@ void PlayerRotation(entt::registry& registry, entt::entity& entity, GW::MATH::GM
 	}
 }
 
-void Movement(entt::registry& registry, entt::entity& entity, 
+void Movement(entt::registry& registry, entt::entity& entity,
 	const float& deltaTime, const float& speed, UTIL::Input input) {
 
 	GW::MATH::GMATRIXF& transform = registry.get<GAME::Transform>(entity).matrix;

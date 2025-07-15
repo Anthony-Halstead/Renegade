@@ -6,6 +6,7 @@
 #include "../APP/Window.hpp"
 #include "../UI/UIComponents.h"
 #include <iostream>
+#include "ItemPickupComponents.h"
 
 namespace GAME
 {
@@ -93,44 +94,40 @@ namespace GAME
 	// Update functions
 	void UpdatePosition(entt::registry& reg)
 	{
+
 		const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
+		auto movers = reg.view<Transform, DRAW::MeshCollection>();
+		for (auto e : movers)
+		{
+			auto& T = movers.get<Transform>(e);
+			if (auto* V = reg.try_get<Velocity>(e))
+			{
+				auto& p = T.matrix.row4;
+				p.x += V->vec.x * dt;
+				p.y += V->vec.y * dt;
+				p.z += V->vec.z * dt;
+			}
 
-	void UpdatePosition(entt::registry& registry)
-	{
-	 const double dt = reg.ctx<UTIL::DeltaTime>().dtSec;
+			if (reg.all_of<DRAW::OBB>(e))
+			{
+				const auto& local = movers.get<DRAW::MeshCollection>(e).obb;
+				reg.get<DRAW::OBB>(e).obb = UTIL::BuildOBB(local, T);
+			}
 
-    auto movers = reg.view<Transform, DRAW::MeshCollection>();
-    for (auto e : movers)
-    {
-        auto& T = movers.get<Transform>(e);
-        if (auto* V = reg.try_get<Velocity>(e))
-        {
-            auto& p = T.matrix.row4;          
-            p.x += V->vec.x * dt;
-            p.y += V->vec.y * dt;
-            p.z += V->vec.z * dt;
-        }
+			auto& collection = movers.get<DRAW::MeshCollection>(e);
+			for (auto it = collection.entities.begin(); it != collection.entities.end(); /* manual ++ */)
+			{
+				if (!reg.valid(*it)) {
+					it = collection.entities.erase(it);
+					continue;
+				}
 
-        if (reg.all_of<DRAW::OBB>(e))
-        {
-            const auto& local = movers.get<DRAW::MeshCollection>(e).obb;
-            reg.get<DRAW::OBB>(e).obb = UTIL::BuildOBB(local, T);
-        }
-
-        auto& collection = movers.get<DRAW::MeshCollection>(e);
-        for (auto it = collection.entities.begin(); it != collection.entities.end(); /* manual ++ */)
-        {
-            if (!reg.valid(*it)) {           
-                it = collection.entities.erase(it);
-                continue;                    
-            }
-
-            entt::entity mesh = *it; ++it;    
-            if (reg.all_of<DRAW::GPUInstance>(mesh))
-                reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
-        }
-    }
+				entt::entity mesh = *it; ++it;
+				if (reg.all_of<DRAW::GPUInstance>(mesh))
+					reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
+			}
+		}
 	}
 
 	void UpdateCollide(entt::registry& reg)
@@ -150,6 +147,8 @@ namespace GAME
 
 					--reg.get<Health>(b).health;
 					reg.emplace<Hit>(b);
+					GW::MATH::GVECTORF pos = reg.get<Transform>(b).matrix.row4;
+					GAME::HandlePickup(reg, pos);
 					reg.emplace_or_replace<Destroy>(a);
 					return;
 				}
@@ -261,7 +260,11 @@ namespace GAME
 	void UpdateDestroy(entt::registry& registry)
 	{
 		entt::basic_view destroy = registry.view<Destroy>();
-		for (auto ent : destroy) registry.destroy(ent);
+		for (auto ent : destroy)
+		{
+			registry.destroy(ent);
+		}
+
 	}
 
 	void Update(entt::registry& registry, entt::entity entity)

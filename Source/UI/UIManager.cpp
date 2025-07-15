@@ -28,6 +28,7 @@ namespace UI
 	void DisplayPlayerHealth(entt::registry& registry, UIManager& ui, APP::Window& window)
 	{
 		if (!registry.valid(registry.view<GAME::Player>().front())) return; // Ensure player entity exists
+		if (!registry.any_of<GAME::Health>(registry.view<GAME::Player>().front())) return; // Ensure player has health component
 		auto& healthComponent = registry.get<GAME::Health>(registry.view<GAME::Player>().front());
 		std::string healthText = "Lives: " + std::to_string(healthComponent.health);
 		ui.font->DrawTextImmediate(0, window.height - 5, healthText.c_str(), healthText.size());

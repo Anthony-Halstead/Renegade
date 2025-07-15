@@ -236,7 +236,7 @@ namespace AI
 			// Spawn a wave specific to this boss
 			auto& bossTransform = registry.get<GAME::Transform>(entity);
 			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-			SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
+			//SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
 		}
 	}
 	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity& entity)
@@ -472,7 +472,7 @@ namespace AI
 
 						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
 						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-						SpawnFlock(registry, 20, bossPos);
+						//SpawnFlock(registry, 20, bossPos);
 					}
 				}
 			}
@@ -579,6 +579,44 @@ namespace AI
 
 	}
 
+	void UpdateExplosions(entt::registry& registry)
+	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+		auto explosions = registry.view<AI::Explosion, GAME::Transform, AI::ExplosionGrowth>();
+
+		for (auto ex : explosions)
+		{
+			auto& transform = explosions.get<GAME::Transform>(ex);
+			auto& growth = explosions.get<AI::ExplosionGrowth>(ex);
+			const float explosionDamage = (*config).at("Explosion").at("damage").as<float>();
+			bool reached = UTIL::ScaleTowards(transform, growth.targetScale, growth.growthRate);
+
+			float currentRadius = transform.matrix.row1.x;
+
+			auto healthView = registry.view<GAME::Health, GAME::Transform>();
+			for (auto target : healthView)
+			{
+				if (target == ex) continue; // Don't damage self
+				auto& health = healthView.get<GAME::Health>(target);
+				auto& targetTransform = healthView.get<GAME::Transform>(target);
+				float dist = UTIL::Distance(transform.matrix.row4, targetTransform.matrix.row4);
+				if (dist <= currentRadius && health.health > 0) {
+					health.health = (health.health > explosionDamage) ? health.health - explosionDamage : 0;
+					std::cout << "Entity " << int(target) << " took " << explosionDamage << " damage from explosion. Remaining health: " << health.health << std::endl;
+					if (health.health == 0 && !registry.all_of<GAME::Destroy>(target)) {
+						registry.emplace<GAME::Destroy>(target);
+						std::cout << "Entity " << int(target) << " destroyed by explosion." << std::endl;
+					}
+				}
+			}
+			// Scale explosion
+			if (reached)
+			{
+				registry.emplace<GAME::Destroy>(ex);
+			}
+		}
+	}
+
 	void UpdateKamikazeEnemy(entt::registry& registry)
 	{
 		// Move towards player and explode on contact
@@ -667,6 +705,7 @@ namespace AI
 			UpdateAIDestroy(registry);
 			UpdateEnemies(registry, entity);
 			UpdateKamikazeEnemy(registry);
+			UpdateExplosions(registry);
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);			
 			UpdateBossSpawn(registry, entity, bossWaveCount);

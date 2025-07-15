@@ -55,6 +55,10 @@ namespace AI
 	struct HoldFire { float holdTime = 0.0f; };
 	struct ShotsFired { int count = 0; };
 	struct Explosion {};
+	struct ExplosionGrowth {
+		GW::MATH::GVECTORF targetScale;
+		float growthRate;
+	};
 	struct Kamikaze {};
 	struct SpawnKamikazeEnemy { float spawnTimer = 3.0f; };
 	struct RushTarget { GW::MATH::GVECTORF trg; };

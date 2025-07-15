@@ -98,39 +98,39 @@ namespace GAME
 
 	 const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
-    auto movers = reg.view<Transform, DRAW::MeshCollection>();
-    for (auto e : movers)
-    {
-        auto& T = movers.get<Transform>(e);
-        if (auto* V = reg.try_get<Velocity>(e))
-        {
-            auto& p = T.matrix.row4;          
-            p.x += V->vec.x * dt;
-            p.y += V->vec.y * dt;
-            p.z += V->vec.z * dt;
-        }
+		auto movers = reg.view<Transform, DRAW::MeshCollection>();
+		for (auto e : movers)
+		{
+			auto& T = movers.get<Transform>(e);
+			if (auto* V = reg.try_get<Velocity>(e))
+			{
+				auto& p = T.matrix.row4;
+				p.x += V->vec.x * dt;
+				p.y += V->vec.y * dt;
+				p.z += V->vec.z * dt;
+			}
 
-        if (reg.all_of<DRAW::OBB>(e))
-        {
-            const auto& local = movers.get<DRAW::MeshCollection>(e).obb;
-            reg.get<DRAW::OBB>(e).obb = UTIL::BuildOBB(local, T);
-        }
+			if (reg.all_of<DRAW::OBB>(e))
+			{
+				const auto& local = movers.get<DRAW::MeshCollection>(e).obb;
+				reg.get<DRAW::OBB>(e).obb = UTIL::BuildOBB(local, T);
+			}
 
-        auto& collection = movers.get<DRAW::MeshCollection>(e);
-        for (auto it = collection.entities.begin(); it != collection.entities.end(); /* manual ++ */)
-        {
-            if (!reg.valid(*it)) {           
-                it = collection.entities.erase(it);
-                continue;                    
-            }
+			auto& collection = movers.get<DRAW::MeshCollection>(e);
+			for (auto it = collection.entities.begin(); it != collection.entities.end(); /* manual ++ */)
+			{
+				if (!reg.valid(*it)) {
+					it = collection.entities.erase(it);
+					continue;
+				}
 
-            entt::entity mesh = *it; ++it;    
-            if (reg.all_of<DRAW::GPUInstance>(mesh))
-                reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
-        }
+				entt::entity mesh = *it; ++it;
+				if (reg.all_of<DRAW::GPUInstance>(mesh))
+					reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
+			}
+		}
     }
 	
-
 	void UpdateCollide(entt::registry& reg)
 	{
 		const float dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;

@@ -6,6 +6,7 @@
 #include "../APP/Window.hpp"
 #include "../UI/UIComponents.h"
 #include <iostream>
+#include "ItemPickupComponents.h"
 #include "../AI/AIComponents.h"
 
 namespace GAME
@@ -94,6 +95,7 @@ namespace GAME
 	// Update functions
 	void UpdatePosition(entt::registry& reg)
 	{
+
 	 const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
     auto movers = reg.view<Transform, DRAW::MeshCollection>();
@@ -127,7 +129,7 @@ namespace GAME
                 reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
         }
     }
-	}
+	
 
 	void UpdateCollide(entt::registry& reg)
 	{
@@ -146,6 +148,8 @@ namespace GAME
 
 					--reg.get<Health>(b).health;
 					reg.emplace<Hit>(b);
+					GW::MATH::GVECTORF pos = reg.get<Transform>(b).matrix.row4;
+					GAME::HandlePickup(reg, pos);
 					reg.emplace_or_replace<Destroy>(a);
 					return;
 				}
@@ -257,7 +261,11 @@ namespace GAME
 	void UpdateDestroy(entt::registry& registry)
 	{
 		entt::basic_view destroy = registry.view<Destroy>();
-		for (auto ent : destroy) registry.destroy(ent);
+		for (auto ent : destroy)
+		{
+			registry.destroy(ent);
+		}
+
 	}
 
 	void Update(entt::registry& registry, entt::entity entity)

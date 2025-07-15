@@ -10,6 +10,7 @@
 #include "AUDIO/AudioSystem.h"
 #include "AI/AIComponents.h"
 #include "UI/UIComponents.h"
+#include "GAME/ItemPickupComponents.h"
 // Local routines for specific application behavior
 
 void GraphicsBehavior(entt::registry& registry);
@@ -17,6 +18,7 @@ void GameplayBehavior(entt::registry& registry);
 void AudioBehavior(entt::registry& registry);
 void AIBehavior(entt::registry& registry);
 void UIBehavior(entt::registry& registry);
+void PickupBehavior(entt::registry& registry);
 void MainLoopBehavior(entt::registry& registry);
 
 enum class AppState { Splash, MainMenu, Settings, Credits, Scores, GameLoop };
@@ -45,7 +47,7 @@ int main()
 
 	GameplayBehavior(registry); // create entities and components for gameplay
 	AIBehavior(registry); //Create AI Director
-
+	PickupBehavior(registry);
 	UIBehavior(registry); // Create UI 
 
 	MainLoopBehavior(registry); // update windows and input
@@ -69,6 +71,10 @@ void AIBehavior(entt::registry& registry)
 {
 	auto e = registry.create();
 	registry.emplace<AI::AIDirector>(e);
+}
+void PickupBehavior(entt::registry& registry) {
+	auto ent = registry.create();
+	registry.emplace<GAME::PickupManager>(ent, GAME::PickupManager{ GAME::ItemDropConfig{} });
 }
 void UIBehavior(entt::registry& registry)
 {
@@ -239,13 +245,13 @@ void MainLoopBehavior(entt::registry& registry)
 
 		closedCount = 0;
 
-		if(!registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
+		if (!registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
 
 		registry.patch<AI::AIDirector>(registry.view<AI::AIDirector>().front());
 		registry.patch<GAME::StateManager>(registry.view<GAME::StateManager>().front());
 		registry.patch<AUDIO::MusicHandle>(registry.view<AUDIO::MusicHandle>().front());
-
+		registry.patch<GAME::PickupManager>(registry.view<GAME::PickupManager>().front());
 		for (auto entity : winView)
 		{
 			if (registry.any_of<APP::WindowClosed>(entity)) ++closedCount;

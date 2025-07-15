@@ -114,81 +114,50 @@ namespace DRAW
 	// Forward declare
 	void Destroy_VulkanGPUInstanceBuffer(entt::registry& registry, entt::entity entity);
 
-	void Update_VulkanGPUInstanceBuffer(entt::registry& registry, entt::entity entity)
-	{
+	void Update_VulkanGPUInstanceBuffer(entt::registry& registry, entt::entity entity) {
 		if (!registry.all_of<std::vector<GPUInstance>>(entity))
-			return;
+			return; // No Instances, so nothing to write. Bail
 
 		auto& gpuBuffer = registry.get<VulkanGPUInstanceBuffer>(entity);
 		auto& instances = registry.get<std::vector<GPUInstance>>(entity);
 		auto& renderer = registry.get<VulkanRenderer>(entity);
 
-		const size_t live = instances.size();
-		size_t       newCap = gpuBuffer.element_count;
-		bool         needResize = false;
-
-		while (live > newCap) { newCap <<= 1; needResize = true; }
-
-		if (live < newCap / 4 &&
-			newCap > gpuBuffer.min_capacity)
+		// Resize buffer if needed
+		if (instances.size() > gpuBuffer.element_count)
 		{
-			gpuBuffer.idleFrames++;
-			if (gpuBuffer.idleFrames > 120) {
-				do {
-					newCap >>= 1;
-				} while (live < newCap / 4 && newCap > gpuBuffer.min_capacity);
-				needResize = true;
-			}
-		}
-		else {
-			gpuBuffer.idleFrames = 0;
-		}
+			Destroy_VulkanGPUInstanceBuffer(registry, entity);
 
-		if (needResize)
-		{
-			vkDeviceWaitIdle(renderer.device);
-
-			for (auto b : gpuBuffer.buffer)  vkDestroyBuffer(renderer.device, b, nullptr);
-			for (auto m : gpuBuffer.memory) vkFreeMemory(renderer.device, m, nullptr);
-
-			gpuBuffer.element_count = newCap;
-			gpuBuffer.buffer.clear();
-			gpuBuffer.memory.clear();
-
-			unsigned imgCount; renderer.vlkSurface.GetSwapchainImageCount(imgCount);
-			gpuBuffer.buffer.resize(imgCount);
-			gpuBuffer.memory.resize(imgCount);
-
-			const VkDeviceSize bytes = sizeof(GPUInstance) * gpuBuffer.element_count;
-
-			for (unsigned i = 0; i < imgCount; ++i)
+			while (instances.size() > gpuBuffer.element_count)
 			{
-				GvkHelper::create_buffer(renderer.physicalDevice, renderer.device,
-					bytes,
-					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-					VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-					&gpuBuffer.buffer[i], &gpuBuffer.memory[i]);
+				gpuBuffer.element_count *= 2; // Double the storage size if we ran out
+			}
 
-				VkDescriptorBufferInfo info{ gpuBuffer.buffer[i], 0, VK_WHOLE_SIZE };
-				VkWriteDescriptorSet  wr{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-				wr.dstSet = renderer.descriptorSets[i];
-				wr.dstBinding = 1;
-				wr.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				wr.descriptorCount = 1;
-				wr.pBufferInfo = &info;
-				vkUpdateDescriptorSets(renderer.device, 1, &wr, 0, nullptr);
+			for (unsigned int i = 0; i < gpuBuffer.buffer.size(); i++)
+			{
+				GvkHelper::create_buffer(renderer.physicalDevice, renderer.device, sizeof(GPUInstance) * gpuBuffer.element_count,
+					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+					VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &gpuBuffer.buffer[i], &gpuBuffer.memory[i]);
+
+				VkDescriptorBufferInfo storageBufferInfo = { gpuBuffer.buffer[i], 0, VK_WHOLE_SIZE };
+				VkWriteDescriptorSet storageWrite = {};
+				storageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				storageWrite.dstSet = renderer.descriptorSets[i];
+				storageWrite.dstBinding = 1; // 1 For the storage buffer
+				storageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				storageWrite.descriptorCount = 1;
+				storageWrite.pBufferInfo = &storageBufferInfo;
+
+				vkUpdateDescriptorSets(renderer.device, 1, &storageWrite, 0, nullptr);
 			}
 		}
 
-		if (live > 0)
+		if (instances.size() > 0)
 		{
-			unsigned frame; renderer.vlkSurface.GetSwapchainCurrentImage(frame);
+			unsigned int sizeInBytes = sizeof(GPUInstance) * instances.size();
+			unsigned int frame;
+			renderer.vlkSurface.GetSwapchainCurrentImage(frame);
 			vkDeviceWaitIdle(renderer.device);
-			GvkHelper::write_to_buffer(renderer.device,
-				gpuBuffer.memory[frame],
-				instances.data(),
-				sizeof(GPUInstance) * live);
+			GvkHelper::write_to_buffer(renderer.device, gpuBuffer.memory[frame], instances.data(), sizeInBytes);
 		}
 
 		vkDeviceWaitIdle(renderer.device);

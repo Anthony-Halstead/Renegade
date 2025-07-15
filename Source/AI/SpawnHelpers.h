@@ -14,13 +14,13 @@ namespace AI
 		R.emplace<FormationAnchor>(a, FormationAnchor{ GW::MATH::GIdentityVectorF, slots });
 		return a;
 	}
-	inline void SpawnMember(entt::registry& R, entt::entity anchor, uint16_t idx, const GW::MATH::GVECTORF& spawnPos)
+	inline void SpawnMember(entt::registry& R, entt::entity anchor, uint16_t idx, const GW::MATH::GVECTORF& spawnPos, const char* name)
 	{
 		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
 
 		entt::entity e = R.create();
-		std::string eModel = (*config).at("Enemy1").at("model").as<std::string>();
-		unsigned int eHealth = (*config).at("Enemy1").at("hitpoints").as<unsigned int>();
+		std::string eModel = (*config).at(name).at("model").as<std::string>();
+		unsigned int eHealth = (*config).at(name).at("hitpoints").as<unsigned int>();
 		R.emplace<AI::FormationMember>(e, AI::FormationMember{ anchor, idx });
 		R.emplace<AI::MoveTarget>(e);
 		R.emplace<GAME::Enemy>(e);
@@ -107,7 +107,7 @@ namespace AI
 			UTIL::CreateDynamicObjects(registry, e, eModel);
 		}
 	}
-	inline void SpawnWave(entt::registry& R, FormationType kind, uint32_t spawnCount, const GW::MATH::GVECTORF& spawnPos, const GW::MATH::GVECTORF& anchorPos, float spacing = 2.5f)
+	inline void SpawnWave(entt::registry& R, FormationType kind, uint32_t spawnCount, const GW::MATH::GVECTORF& spawnPos, const GW::MATH::GVECTORF& anchorPos, const char* name, float spacing = 2.5f)
 	{
 		auto slots = MakeSlots(kind, spacing);
 		if (slots.empty()) return;
@@ -121,8 +121,27 @@ namespace AI
 
 		for (uint16_t i = 0; i < n; ++i)
 		{
-			SpawnMember(R, anchor, i, spawnPos);
+			SpawnMember(R, anchor, i, spawnPos, name);
 		}
+	}
+	inline void SpawnKamikaze(entt::registry& reg, const GW::MATH::GVECTORF& spawnPos)
+	{
+		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::entity e = reg.create();
+		std::string model = (*config).at("Kamikaze").at("model").as<std::string>();
+		reg.emplace<AI::RushTarget>(e);
+		reg.emplace<GAME::Enemy>(e);
+		unsigned int health = (*config).at("Kamikaze").at("hitpoints").as<unsigned int>();
+		reg.emplace<GAME::Health>(e, health);
+		reg.emplace<AI::Kamikaze>(e);
+		reg.emplace<GAME::Bounded>(e);
+		GW::MATH::GMATRIXF enemyMatrix = GW::MATH::GIdentityMatrixF;
+		enemyMatrix.row4 = spawnPos;
+		reg.emplace<GAME::Transform>(e, enemyMatrix);
+		reg.emplace<GAME::Velocity>(e);
+
+		UTIL::CreateDynamicObjects(reg, e, model);
 	}
 	inline void SpawnBoss(entt::registry& R, const char* name)
 	{
@@ -141,6 +160,7 @@ namespace AI
 		R.emplace<GAME::Health>(enemyBoss, bossHealth);
 		R.emplace<GAME::Transform>(enemyBoss, enemyTransform);
 		R.emplace<GAME::SpawnEnemies>(enemyBoss, 5.0f);
+		R.emplace<AI::SpawnKamikazeEnemy>(enemyBoss);
 		R.emplace<GAME::PriorFrameData>(enemyBoss, GAME::PriorFrameData{ bossHealth });
 
 		UTIL::CreateDynamicObjects(R, enemyBoss, enemyBossModel);

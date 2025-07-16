@@ -4,6 +4,7 @@
 #include "../DRAW/DrawComponents.h"
 #include "../APP/Window.hpp"
 #include "../GAME/GameComponents.h"
+#include "../UTIL/Utilities.h"
 #include "shaderc/shaderc.h" // needed for compiling shaders at runtime
 #ifdef _WIN32 // must use MT platform DLL libraries on windows
 #pragma comment(lib, "shaderc_combined.lib") 
@@ -42,6 +43,28 @@ namespace UI
 		ui.font->DrawTextImmediate(0, window.height - 5, healthText.c_str(), healthText.size());
 	}
 
+	// Get gamepad state inputs
+	void GetGamepadState(entt::registry& registry, float& leftStickX, float& leftStickY, float& upBtn, float& downBtn, float& sBtn) {
+		UTIL::Input input = registry.ctx().get<UTIL::Input>();
+		if (input.connectedControllers > 0) 
+		{
+			input.gamePads.GetState(0, G_LX_AXIS, leftStickX);
+			input.gamePads.GetState(0, G_LY_AXIS, leftStickY);
+			input.gamePads.GetState(0, G_DPAD_DOWN_BTN, downBtn);
+			input.gamePads.GetState(0, G_DPAD_UP_BTN, upBtn);
+			input.gamePads.GetState(0, G_SOUTH_BTN, sBtn);
+		}
+		else
+		{
+			// No controller connected, set controller-specific inputs to zero
+			leftStickX = 0.0f;
+			leftStickY = 0.0f;
+			upBtn = 0.0f;
+			downBtn = 0.0f;
+			sBtn = 0.0f;
+		}
+	}
+
 	unsigned BGRAtoARGB(const unsigned& color) {
 		const unsigned alpha = (color & 0x000000FF) << 24;
 		const unsigned red = (color & 0x0000FF00) << 8;
@@ -53,16 +76,19 @@ namespace UI
 
 	void DisplayTitleScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned int* color_pix)
 	{
+		float leftStickX, leftStickY, upBtn, downBtn, sBtn;
+		GetGamepadState(registry, leftStickX, leftStickY, upBtn, downBtn, sBtn);
+
 		// TODO: make this more versatile; definitely needs to be refactored later
 		if (registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
 			auto& title = registry.get<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01)
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0)
 				title.start = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0)
 				title.start = 0;
-			if (GetAsyncKeyState(VK_RETURN) & 0x01)
+			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
 				if (title.start)
 					registry.remove<UI::TitleScreen>(registry.view<UI::UIManager>().front());

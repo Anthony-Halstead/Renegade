@@ -84,9 +84,9 @@ namespace UI
 
 			auto& title = registry.get<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0)
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
 				title.start = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
 				title.start = 0;
 			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
@@ -136,9 +136,9 @@ namespace UI
 			float startBtn, leftStickY, upBtn, downBtn, sBtn;
 			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
 
-			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0)
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
 				winLoseScreen.restart = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
 				winLoseScreen.restart = 0;
 			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
@@ -195,9 +195,9 @@ namespace UI
 			}
 			auto& pauseScreen = registry.get<UI::PauseScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0)
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
 				pauseScreen.pauseContinue = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
 				pauseScreen.pauseContinue = 0;
 			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{

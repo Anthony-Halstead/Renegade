@@ -146,7 +146,6 @@ namespace GAME
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			MonitorPlayerHealth(registry);
-			// ScoreEvent(registry, "Player", "score");
 			MonitorBossHealth(registry);
 			MonitorEnemyHealth(registry);
 		}

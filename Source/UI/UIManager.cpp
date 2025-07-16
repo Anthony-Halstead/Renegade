@@ -44,11 +44,11 @@ namespace UI
 	}
 
 	// Get gamepad state inputs
-	void GetGamepadState(entt::registry& registry, float& leftStickX, float& leftStickY, float& upBtn, float& downBtn, float& sBtn) {
+	void GetGamepadState(entt::registry& registry, float& startBtn, float& leftStickY, float& upBtn, float& downBtn, float& sBtn) {
 		UTIL::Input input = registry.ctx().get<UTIL::Input>();
 		if (input.connectedControllers > 0) 
 		{
-			input.gamePads.GetState(0, G_LX_AXIS, leftStickX);
+			input.gamePads.GetState(0, G_START_BTN, startBtn);
 			input.gamePads.GetState(0, G_LY_AXIS, leftStickY);
 			input.gamePads.GetState(0, G_DPAD_DOWN_BTN, downBtn);
 			input.gamePads.GetState(0, G_DPAD_UP_BTN, upBtn);
@@ -57,7 +57,7 @@ namespace UI
 		else
 		{
 			// No controller connected, set controller-specific inputs to zero
-			leftStickX = 0.0f;
+			startBtn = 0.0f;
 			leftStickY = 0.0f;
 			upBtn = 0.0f;
 			downBtn = 0.0f;
@@ -79,8 +79,8 @@ namespace UI
 		// TODO: make this more versatile; definitely needs to be refactored later
 		if (registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
-			float leftStickX, leftStickY, upBtn, downBtn, sBtn;
-			GetGamepadState(registry, leftStickX, leftStickY, upBtn, downBtn, sBtn);
+			float startBtn, leftStickY, upBtn, downBtn, sBtn;
+			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
 
 			auto& title = registry.get<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
@@ -133,11 +133,14 @@ namespace UI
 		{
 			auto& winLoseScreen = registry.get<UI::WinLoseScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01)
+			float startBtn, leftStickY, upBtn, downBtn, sBtn;
+			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
+
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0)
 				winLoseScreen.restart = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0)
 				winLoseScreen.restart = 0;
-			if (GetAsyncKeyState(VK_RETURN) & 0x01)
+			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
 				// TODO: write restart logic
 				if (winLoseScreen.restart)
@@ -180,19 +183,23 @@ namespace UI
 	{
 		if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
+
+			float startBtn, leftStickY, upBtn, downBtn, sBtn;
+			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
+
 			if (!registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			{
-				if (GetAsyncKeyState(VK_ESCAPE) & 0x01)
+				if (GetAsyncKeyState(VK_ESCAPE) & 0x01 || startBtn > 0)
 					registry.emplace_or_replace<UI::PauseScreen>(registry.view<UI::UIManager>().front());
 				return;
 			}
 			auto& pauseScreen = registry.get<UI::PauseScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01)
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0)
 				pauseScreen.pauseContinue = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0)
 				pauseScreen.pauseContinue = 0;
-			if (GetAsyncKeyState(VK_RETURN) & 0x01)
+			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
 				if (pauseScreen.pauseContinue)
 					registry.remove<UI::PauseScreen>(registry.view<UI::UIManager>().front());

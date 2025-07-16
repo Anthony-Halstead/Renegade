@@ -1,0 +1,24 @@
+# Blender 4.3.2 MTL File: 'test.blend'
+# www.blender.org
+
+newmtl Default_Material.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ni 1.500000
+illum 2
+map_Kd Textures/blinn2_baseColor.png
+map_Ke Textures/blinn2_emissive.png
+map_d Textures/blinn2_baseColor.png
+map_Bump -bm 1.000000 Textures/blinn2_normal.png
+
+newmtl blinn2.001
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ni 1.500000
+illum 2
+map_Kd Textures/blinn2_baseColor.png
+map_Ke Textures/blinn2_emissive.png
+map_d Textures/blinn2_baseColor.png
+map_Bump -bm 1.000000 //Models/New Models/spaceship/textures/blinn2_normal.png

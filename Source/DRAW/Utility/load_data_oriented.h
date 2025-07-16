@@ -220,6 +220,8 @@ private:
 				if (EntityData.find("gameType") != EntityData.end())
 					add.isDynamic = 1;
 
+
+
 				// does this model already exist?
 				auto found = outModels.find(add); // IMPORTANT, LOOK FOR THIS AFTER YOU'RE DONE WITH THE TRANSFORM.
 				if (found == outModels.end()) // no

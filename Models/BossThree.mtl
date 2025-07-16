@@ -1,0 +1,79 @@
+# Blender 4.3.2 MTL File: 'test.blend'
+# www.blender.org
+
+newmtl FunsStrip1
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Textures/FunsStrip1_baseColor.png
+map_Bump -bm 1.000000 Textures/FunsStrip1_normal.png
+
+newmtl FunsStrip3
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Textures/FunsStrip3_baseColor.png
+map_Bump -bm 1.000000 Textures/FunsStrip3_normal.png
+
+newmtl Funstrip2
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Textures/Funstrip2_baseColor.png
+map_Bump -bm 1.000000 Textures/Funstrip2_normal.png
+
+newmtl TechPan1
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Textures/TechPan1_baseColor.png
+map_Ke Textures/TechPan1_emissive.png
+map_Bump -bm 1.000000 Textures/TechPan1_normal.png
+
+newmtl TechPanSimple
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Textures/TechPanSimple_baseColor.png
+map_Bump -bm 1.000000 Textures/TechPanSimple_normal.png
+
+newmtl Trim03
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Textures/Trim03_baseColor.png
+map_Bump -bm 1.000000 Textures/Trim03_normal.png
+
+newmtl Trim4
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Textures/Trim4_baseColor.png
+map_Bump -bm 1.000000 Textures/Trim4_normal.png

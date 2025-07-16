@@ -59,8 +59,8 @@ namespace AI
 
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 
-		std::string eModel = (*config).at("Enemy1").at("model").as<std::string>();
-		unsigned int eHealth = (*config).at("Enemy1").at("hitpoints").as<unsigned int>();
+		std::string eModel = (*config).at("Swarm").at("model").as<std::string>();
+		unsigned int eHealth = (*config).at("Swarm").at("hitpoints").as<unsigned int>();
 
 		float speed = (*config).at("FlockSettings").at("speed").as<float>();
 		float safeRadius = (*config).at("FlockSettings").at("safeRadius").as<float>();

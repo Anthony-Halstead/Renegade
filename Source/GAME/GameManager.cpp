@@ -95,7 +95,6 @@ namespace GAME
 	// Update functions
 	void UpdatePosition(entt::registry& reg)
 	{
-
 	 const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
 		auto movers = reg.view<Transform, DRAW::MeshCollection>();
@@ -129,8 +128,8 @@ namespace GAME
 					reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
 			}
 		}
-    }
-	
+  }
+
 	void UpdateCollide(entt::registry& reg)
 	{
 		const float dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;

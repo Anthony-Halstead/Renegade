@@ -78,6 +78,29 @@ namespace UI
 					color_pix[i] = BGRAtoARGB(RENEGADE_TitleQuit_pixels[i]);
 		}
 	}
+
+	void DisplayWinLoseScreen_Helper(UI::WinLoseScreen& winLoseScreen, APP::Window& window, unsigned int* color_pix, bool W)
+	{
+		if (W)
+		{
+			if (winLoseScreen.restart)
+				for (int i = 0; i < window.width * window.height; ++i)
+					color_pix[i] = BGRAtoARGB(RENEGADE_WinRestart_pixels[i]);
+			else
+				for (int i = 0; i < window.width * window.height; ++i)
+					color_pix[i] = BGRAtoARGB(RENEGADE_WinQuit_pixels[i]);
+		}
+		else
+		{
+			if (winLoseScreen.restart)
+				for (int i = 0; i < window.width * window.height; ++i)
+					color_pix[i] = BGRAtoARGB(RENEGADE_LoseRestart_pixels[i]);
+			else
+				for (int i = 0; i < window.width * window.height; ++i)
+					color_pix[i] = BGRAtoARGB(RENEGADE_LoseQuit_pixels[i]);
+		}
+	}
+
 	void DisplayWinLoseScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned int* color_pix)
 	{
 		if (registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()))
@@ -103,25 +126,26 @@ namespace UI
 				}
 			}
 
-			// win
-			if (registry.get<GAME::Health>(registry.view<GAME::Player>().front()).health > 0)
+			// loss
+			if (!registry.valid(registry.view<GAME::Player>().front()))
 			{
-				if (winLoseScreen.restart)
-					for (int i = 0; i < window.width * window.height; ++i)
-						color_pix[i] = BGRAtoARGB(RENEGADE_WinRestart_pixels[i]);
-				else
-					for (int i = 0; i < window.width * window.height; ++i)
-						color_pix[i] = BGRAtoARGB(RENEGADE_WinQuit_pixels[i]);
+				DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, false);
 			}
-			// lose
 			else
 			{
-				if (winLoseScreen.restart)
-					for (int i = 0; i < window.width * window.height; ++i)
-						color_pix[i] = BGRAtoARGB(RENEGADE_LoseRestart_pixels[i]);
+				if (registry.any_of<GAME::Health>(registry.view<GAME::Player>().front()))
+				{
+					// loss
+					if (registry.get<GAME::Health>(registry.view<GAME::Player>().front()).health <= 0)
+						DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, false);
+					else // win
+						DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, true);
+				}
 				else
-					for (int i = 0; i < window.width * window.height; ++i)
-						color_pix[i] = BGRAtoARGB(RENEGADE_LoseQuit_pixels[i]);
+				{
+					// if player has no health component, assume they lost
+					DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, false);
+				}
 			}
 		}
 	}

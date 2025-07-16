@@ -1,0 +1,12 @@
+# Blender 4.3.2 MTL File: 'test.blend'
+# www.blender.org
+
+newmtl RedGlow
+Ns 251.036285
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 1.200000 0.013016 0.031627
+Ni 11.999999
+d 1.000000
+illum 2
+map_Kd Textures/RedGlow.png

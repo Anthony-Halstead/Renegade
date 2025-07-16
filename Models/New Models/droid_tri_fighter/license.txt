@@ -1,0 +1,11 @@
+Model Information:
+* title:	Droid Tri Fighter
+* source:	https://sketchfab.com/3d-models/droid-tri-fighter-2517de834ad7418ea367ecdacd13524c
+* author:	Steven (https://sketchfab.com/steventa3d)
+
+Model License:
+* license type:	CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
+* requirements:	Author must be credited. No commercial use.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Droid Tri Fighter" (https://sketchfab.com/3d-models/droid-tri-fighter-2517de834ad7418ea367ecdacd13524c) by Steven (https://sketchfab.com/steventa3d) licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)

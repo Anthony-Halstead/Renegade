@@ -444,7 +444,7 @@ namespace AI
 			{
 				auto& title = registry.get<GAME::BossTitle>(ent);
 				if (title.name == "EnemyBoss_Station")
-					UpdateBossOneBehavior(registry, ent);														
+					UpdateBossOneBehavior(registry, ent);
 				else if (title.name == "EnemyBoss_UFO")
 					UpdateBossTwoBehavior(registry, ent);
 				//else if (title.name == "EnemyBoss_Final")
@@ -545,8 +545,8 @@ namespace AI
 		const double dt = R.ctx().get<UTIL::DeltaTime>().dtSec;
 		const auto& cfg = *R.ctx().get<UTIL::Config>().gameConfig;
 		const float rate = cfg.at("Enemy1").at("firerate").as<float>();
-		const float speed = cfg.at("Bullet").at("speed").as<float>();
-		const std::string model = cfg.at("Bullet").at("model").as<std::string>();
+		const float speed = cfg.at("EnemyBullet").at("speed").as<float>();
+		const std::string model = cfg.at("EnemyBullet").at("model").as<std::string>();
 
 		auto v = R.view<GAME::Enemy, GAME::Velocity, GAME::Transform>();
 
@@ -682,7 +682,7 @@ namespace AI
 			UpdateEnemies(registry, entity);
 			UpdateKamikazeEnemy(registry);
 			UpdateFlockGoal(registry);
-			UpdateFlock(registry);			
+			UpdateFlock(registry);
 			UpdateBossSpawn(registry, entity, bossWaveCount);
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);

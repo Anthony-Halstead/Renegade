@@ -1,0 +1,11 @@
+Model Information:
+* title:	Providence Captive Transport Space Ship
+* source:	https://sketchfab.com/3d-models/providence-captive-transport-space-ship-9c61c9ce3798464c9dea7e77d7d81c19
+* author:	mgfxer (https://sketchfab.com/mgfxer)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Providence Captive Transport Space Ship" (https://sketchfab.com/3d-models/providence-captive-transport-space-ship-9c61c9ce3798464c9dea7e77d7d81c19) by mgfxer (https://sketchfab.com/mgfxer) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

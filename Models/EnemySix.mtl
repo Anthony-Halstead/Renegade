@@ -1,0 +1,24 @@
+# Blender 4.3.2 MTL File: 'test.blend'
+# www.blender.org
+
+newmtl Tri_Fighterlambert4SG
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd C:/Tri_Fighterlambert4SG_baseColor.jpeg
+map_Bump -bm 1.000000 C:/Tri_Fighterlambert4SG_normal.png
+
+newmtl Tri_Fighterlambert5SG
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ni 1.500000
+illum 2
+map_Kd C:/Tri_Fighterlambert5SG_baseColor.png
+map_Ke C:/Tri_Fighterlambert5SG_emissive.jpeg
+map_d C:/Tri_Fighterlambert5SG_baseColor.png
+map_Bump -bm 1.000000 C:/Tri_Fighterlambert5SG_normal.png

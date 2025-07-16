@@ -76,12 +76,12 @@ namespace UI
 
 	void DisplayTitleScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned int* color_pix)
 	{
-		float leftStickX, leftStickY, upBtn, downBtn, sBtn;
-		GetGamepadState(registry, leftStickX, leftStickY, upBtn, downBtn, sBtn);
-
 		// TODO: make this more versatile; definitely needs to be refactored later
 		if (registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
+			float leftStickX, leftStickY, upBtn, downBtn, sBtn;
+			GetGamepadState(registry, leftStickX, leftStickY, upBtn, downBtn, sBtn);
+
 			auto& title = registry.get<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
 			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0)

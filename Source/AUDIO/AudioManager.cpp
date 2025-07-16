@@ -97,10 +97,7 @@ namespace AUDIO
 
 		reg.emplace<SoundLibrary>(ent, std::move(sfxLibrary));
 	}
-
-
-	void Update_MusicHandle(entt::registry& reg, entt::entity ent)
-	{
+	void Update_MusicHandle(entt::registry& reg, entt::entity ent) {
 		auto& handle = reg.get<AUDIO::MusicHandle>(ent);
 
 		if (handle.currentTrack.empty()) return;
@@ -141,10 +138,15 @@ namespace AUDIO
 		}
 	}
 
+	void Update(entt::registry& reg, entt::entity ent)
+	{
+		Update_MusicHandle(reg, ent);
+	}
+
 
 	CONNECT_COMPONENT_LOGIC()
 	{
 		registry.on_construct<AudioDevice>().connect<Construct_AudioDevice>();
-		registry.on_update<MusicHandle>().connect<Update_MusicHandle>();
+		registry.on_update<MusicHandle>().connect<Update>();
 	}
 }

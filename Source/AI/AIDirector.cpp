@@ -591,25 +591,6 @@ namespace AI
 			const float explosionDamage = (*config).at("Explosion").at("damage").as<float>();
 			bool reached = UTIL::ScaleTowards(transform, growth.targetScale, growth.growthRate);
 
-			float currentRadius = transform.matrix.row1.x;
-
-			auto healthView = registry.view<GAME::Health, GAME::Transform>();
-			for (auto target : healthView)
-			{
-				if (target == ex) continue; // Don't damage self
-				auto& health = healthView.get<GAME::Health>(target);
-				auto& targetTransform = healthView.get<GAME::Transform>(target);
-				float dist = UTIL::Distance(transform.matrix.row4, targetTransform.matrix.row4);
-				if (dist <= currentRadius && health.health > 0) {
-					health.health = (health.health > explosionDamage) ? health.health - explosionDamage : 0;
-					std::cout << "Entity " << int(target) << " took " << explosionDamage << " damage from explosion. Remaining health: " << health.health << std::endl;
-					if (health.health == 0 && !registry.all_of<GAME::Destroy>(target)) {
-						registry.emplace<GAME::Destroy>(target);
-						std::cout << "Entity " << int(target) << " destroyed by explosion." << std::endl;
-					}
-				}
-			}
-			// Scale explosion
 			if (reached)
 			{
 				registry.emplace<GAME::Destroy>(ex);

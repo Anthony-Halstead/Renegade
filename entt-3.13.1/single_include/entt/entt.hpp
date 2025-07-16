@@ -16475,7 +16475,7 @@ public:
      */
     [[nodiscard]] size_type index(const entity_type entt) const noexcept {
         ENTT_ASSERT(contains(entt), "Set does not contain entity");
-        return static_cast<size_type>(traits_type::to_entity(sparse_ref(entt)));
+        return static_cast<size_type>(traits_type::to_entity(sparse_ref(entt)));           
     }
 
     /**

@@ -27,6 +27,28 @@ namespace Damage
 
 		GW::MATH::GVECTORF targetScale = { explosionRadius, explosionRadius, explosionRadius, 0 };
 		reg.emplace<AI::ExplosionGrowth>(explosion, targetScale, explosionGrowth);
+
+		auto healthView = reg.view<GAME::Health, GAME::Transform>();
+		for (auto target : healthView)
+		{
+			if (target == entity) continue; // Don't damage self
+			auto& health = healthView.get<GAME::Health>(target);
+			auto& t = healthView.get<GAME::Transform>(target);
+			GW::MATH::GVECTORF pos = t.matrix.row4;
+			float distance = UTIL::Distance(pos, transform->matrix.row4);
+			if (distance <= explosionRadius)
+			{
+				float damage = (*config).at("Explosion").at("damage").as<float>();
+				//health.health = (health.health > damage) ? health.health - damage : 0;
+				--reg.get<GAME::Health>(target).health;
+				std::cout << "Entity " << int(target) << " took " << damage << " damage from explosion. Remaining health: " << health.health << std::endl;
+				if (health.health == 0 && !reg.all_of<GAME::Destroy>(target))
+				{
+					reg.emplace_or_replace<GAME::Destroy>(target);
+					std::cout << "Entity " << int(target) << " destroyed by explosion." << std::endl;
+				}
+			}
+		}
 	}
 
 	///***This is just an idea for a basic bullet damage design, not currently used***///

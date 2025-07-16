@@ -95,8 +95,7 @@ namespace GAME
 	// Update functions
 	void UpdatePosition(entt::registry& reg)
 	{
-
-		const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
+	 const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
 		auto movers = reg.view<Transform, DRAW::MeshCollection>();
 		for (auto e : movers)
@@ -129,8 +128,8 @@ namespace GAME
 					reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
 			}
 		}
+  }
 
-	}
 	void UpdateCollide(entt::registry& reg)
 	{
 		const float dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
@@ -187,6 +186,18 @@ namespace GAME
 				// Prevents damage from kamikaze enemies colliding with player, only explosion damages player
 				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Invulnerability>(a) && !reg.any_of<AI::Kamikaze>(b))
+				{
+					--reg.get<Health>(a).health;
+					reg.emplace<Invulnerability>(a,
+						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
+						.at("invulnPeriod").as<float>());
+					std::cout << "Player's current health: "
+						<< reg.get<Health>(a).health << '\n';
+				}
+
+				// Explosion damage
+				if (reg.all_of<Player>(a) && reg.all_of<AI::Explosion>(b) &&
+					!reg.any_of<Invulnerability>(a))
 				{
 					--reg.get<Health>(a).health;
 					reg.emplace<Invulnerability>(a,

@@ -24,6 +24,7 @@ namespace UI
 	// helper functions
 	void DisplayScores(entt::registry& registry, UIManager& ui)
 	{
+		if (!registry.valid(registry.view<GAME::Score>().front())) return; // Ensure score entity exists
 		auto& scoreComponent = registry.get<GAME::Score>(registry.view<GAME::Score>().front());
 		std::string scoreText = "Score " + std::to_string(scoreComponent.score);
 		ui.font->DrawTextImmediate(0, 24, scoreText.c_str(), scoreText.size());
@@ -34,6 +35,8 @@ namespace UI
 
 	void DisplayPlayerHealth(entt::registry& registry, UIManager& ui, APP::Window& window)
 	{
+		if (!registry.valid(registry.view<GAME::Player>().front())) return; // Ensure player entity exists
+		if (!registry.any_of<GAME::Health>(registry.view<GAME::Player>().front())) return; // Ensure player has health component
 		auto& healthComponent = registry.get<GAME::Health>(registry.view<GAME::Player>().front());
 		std::string healthText = "Lives: " + std::to_string(healthComponent.health);
 		ui.font->DrawTextImmediate(0, window.height - 5, healthText.c_str(), healthText.size());

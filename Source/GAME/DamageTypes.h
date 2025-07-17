@@ -52,36 +52,40 @@ namespace Damage
 	//	}
 	//}
 
-	inline void Laser(entt::registry& reg, entt::entity entity)
+	inline void Lazer(entt::registry& reg, entt::entity entity)
 	{
 		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
 
-		// This damage will be used for laser based attacks
-		// Damage will be continous as long as the laser is hitting the target
+		entt::entity lazerEntity = reg.create();
+		float lazerDamage = (*config).at("EnemyLazer").at("damage").as<float>();
+		std::string lazerModel = (*config).at("EnemyLazer").at("model").as<std::string>();
+		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);
+	}
 
-		entt::entity laserEntity = reg.create();
-		float laserDamage = (*config).at("Laser").at("damage").as<float>();
-		std::string model = (*config).at("Laser").at("model").as<std::string>();
+	inline void OrbAttack(entt::registry& reg, entt::entity entity)
+	{
+		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
 
-		//UTIL::CreateDynamicObjects(reg, laserEntity, model);
-		// Detect target has been hit
-		entt::basic_view target = reg.view<GAME::Player, GAME::Health, GAME::Transform>();
-		for (auto e : target)
-		{
-			if (e == entity) continue; // Don't damage self
-			// Begin inflicting damage over time
-			auto& health = target.get<GAME::Health>(e);
-			auto& t = target.get<GAME::Transform>(e);
+		entt::entity orbEntity = reg.create();
+		reg.emplace<AI::OrbAttack>(orbEntity);
+		reg.emplace<GAME::Velocity>(orbEntity);
+		reg.emplace<GAME::Collidable>(orbEntity);
+		reg.emplace<GAME::Bounded>(orbEntity);
+		reg.emplace<GAME::Transform>(orbEntity, GW::MATH::GIdentityMatrixF);
+		float orbDamage = (*config).at("Orb").at("damage").as<float>();
+		std::string orbModel = (*config).at("Orb").at("model").as<std::string>();
 
-			// For as long as the laser is hitting the target, apply damage
-			// Damage is not incremental, deals the same damage per second
-			health.health = (health.health > laserDamage) ? health.health - laserDamage : 0;
-			if (health.health == 0 && !reg.all_of<GAME::Destroy>(e))
-			{
-				reg.emplace<GAME::Destroy>(e);
-				std::cout << "Entity " << int(e) << " destroyed by laser." << std::endl;
-			}
-		}
+		GAME::Transform* orbTransform = reg.try_get<GAME::Transform>(entity);
+		if (!orbTransform) return;
+
+		const float orbRadius = (*config).at("Orb").at("orbRadius").as<float>();
+		float orbGrowth = (*config).at("Orb").at("orbGrowth").as<float>();
+
+		UTIL::CreateTransform(reg, orbEntity, reg.get<GAME::Transform>(entity).matrix);
+		UTIL::CreateDynamicObjects(reg, orbEntity, orbModel);
+
+		GW::MATH::GVECTORF targetScale = { orbRadius, orbRadius, orbRadius, 0 };
+		reg.emplace<AI::ExplosionGrowth>(orbEntity, targetScale, orbGrowth);
 	}
 }
 #endif

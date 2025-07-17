@@ -59,9 +59,21 @@ namespace AI
 		GW::MATH::GVECTORF targetScale;
 		float growthRate;
 	};
+	struct OrbAttack {};
+	struct OrbGrowth {
+		GW::MATH::GVECTORF targetScale;
+		float growthRate;
+	};
 	struct Kamikaze {};
-	struct SpawnKamikazeEnemy { float spawnTimer = 3.0f; };
+	struct SpawnKamikazeEnemy { float spawnTimer = 0.0f; };
 	struct RushTarget { GW::MATH::GVECTORF trg; };
-	struct BossHalfHealth {};
+	struct FinalBossShield {};
+	struct BossParts {
+		entt::entity vulnerableTop;
+		entt::entity invulnerableTop;
+	};
+	struct Visible {
+		bool enabled = true;
+	};;
 }
 #endif

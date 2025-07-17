@@ -3,6 +3,7 @@
 #include "CCL.h"
 #include "UTIL/Utilities.h"
 // include all components, tags, and systems used by this program
+#include "GAME/ItemPickupComponents.h"
 #include "DRAW/DrawComponents.h"
 #include "GAME/GameComponents.h"
 #include "APP/Window.hpp"
@@ -10,7 +11,6 @@
 #include "AUDIO/AudioSystem.h"
 #include "AI/AIComponents.h"
 #include "UI/UIComponents.h"
-#include "GAME/ItemPickupComponents.h"
 // Local routines for specific application behavior
 
 void GraphicsBehavior(entt::registry& registry);
@@ -72,10 +72,13 @@ void AIBehavior(entt::registry& registry)
 	auto e = registry.create();
 	registry.emplace<AI::AIDirector>(e);
 }
-void PickupBehavior(entt::registry& registry) {
+
+void PickupBehavior(entt::registry& registry)
+{
 	auto ent = registry.create();
-	registry.emplace<GAME::PickupManager>(ent, GAME::PickupManager{ GAME::ItemDropConfig{} });
+	registry.emplace<GAME::PickupManager>(ent);   // ? no ItemDropConfig here
 }
+
 void UIBehavior(entt::registry& registry)
 {
 	auto winView = registry.view<GW::SYSTEM::GWindow>();

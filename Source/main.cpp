@@ -245,6 +245,7 @@ void MainLoopBehavior(entt::registry& registry)
 		deltaTime = elapsed;
 
 		closedCount = 0;
+		winCloseFound = false;
 
 		if (!registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());

@@ -4,6 +4,7 @@
 #include "../DRAW/DrawComponents.h"
 #include "../APP/Window.hpp"
 #include "../GAME/GameComponents.h"
+#include "../UTIL/Utilities.h"
 #include "shaderc/shaderc.h" // needed for compiling shaders at runtime
 #ifdef _WIN32 // must use MT platform DLL libraries on windows
 #pragma comment(lib, "shaderc_combined.lib") 
@@ -42,6 +43,28 @@ namespace UI
 		ui.font->DrawTextImmediate(0, window.height - 5, healthText.c_str(), healthText.size());
 	}
 
+	// Get gamepad state inputs
+	void GetGamepadState(entt::registry& registry, float& startBtn, float& leftStickY, float& upBtn, float& downBtn, float& sBtn) {
+		UTIL::Input input = registry.ctx().get<UTIL::Input>();
+		if (input.connectedControllers > 0) 
+		{
+			input.gamePads.GetState(0, G_START_BTN, startBtn);
+			input.gamePads.GetState(0, G_LY_AXIS, leftStickY);
+			input.gamePads.GetState(0, G_DPAD_DOWN_BTN, downBtn);
+			input.gamePads.GetState(0, G_DPAD_UP_BTN, upBtn);
+			input.gamePads.GetState(0, G_SOUTH_BTN, sBtn);
+		}
+		else
+		{
+			// No controller connected, set controller-specific inputs to zero
+			startBtn = 0.0f;
+			leftStickY = 0.0f;
+			upBtn = 0.0f;
+			downBtn = 0.0f;
+			sBtn = 0.0f;
+		}
+	}
+
 	unsigned BGRAtoARGB(const unsigned& color) {
 		const unsigned alpha = (color & 0x000000FF) << 24;
 		const unsigned red = (color & 0x0000FF00) << 8;
@@ -56,13 +79,16 @@ namespace UI
 		// TODO: make this more versatile; definitely needs to be refactored later
 		if (registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
+			float startBtn, leftStickY, upBtn, downBtn, sBtn;
+			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
+
 			auto& title = registry.get<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01)
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
 				title.start = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
 				title.start = 0;
-			if (GetAsyncKeyState(VK_RETURN) & 0x01)
+			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
 				if (title.start)
 					registry.remove<UI::TitleScreen>(registry.view<UI::UIManager>().front());
@@ -107,11 +133,14 @@ namespace UI
 		{
 			auto& winLoseScreen = registry.get<UI::WinLoseScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01)
+			float startBtn, leftStickY, upBtn, downBtn, sBtn;
+			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
+
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
 				winLoseScreen.restart = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
 				winLoseScreen.restart = 0;
-			if (GetAsyncKeyState(VK_RETURN) & 0x01)
+			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
 				// TODO: write restart logic
 				if (winLoseScreen.restart)
@@ -154,19 +183,23 @@ namespace UI
 	{
 		if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
+
+			float startBtn, leftStickY, upBtn, downBtn, sBtn;
+			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
+
 			if (!registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			{
-				if (GetAsyncKeyState(VK_ESCAPE) & 0x01)
+				if (GetAsyncKeyState(VK_ESCAPE) & 0x01 || startBtn > 0)
 					registry.emplace_or_replace<UI::PauseScreen>(registry.view<UI::UIManager>().front());
 				return;
 			}
 			auto& pauseScreen = registry.get<UI::PauseScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01)
+			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
 				pauseScreen.pauseContinue = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01)
+			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
 				pauseScreen.pauseContinue = 0;
-			if (GetAsyncKeyState(VK_RETURN) & 0x01)
+			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
 				if (pauseScreen.pauseContinue)
 					registry.remove<UI::PauseScreen>(registry.view<UI::UIManager>().front());

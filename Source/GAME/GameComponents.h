@@ -55,7 +55,7 @@ namespace GAME
 	};
 
 	struct SpawnEnemies {
-		float spawnTimer;
+		float spawnTimer = 5.f;
 	};
 
 	struct Score {

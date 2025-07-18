@@ -231,6 +231,7 @@ void MainLoopBehavior(entt::registry& registry)
 	auto splashStart = std::chrono::steady_clock::now();
 
 	int closedCount;
+	bool winCloseFound = false;
 	auto winView = registry.view<APP::Window>();
 	auto& deltaTime = registry.ctx().emplace<UTIL::DeltaTime>().dtSec;
 
@@ -244,6 +245,7 @@ void MainLoopBehavior(entt::registry& registry)
 		deltaTime = elapsed;
 
 		closedCount = 0;
+		winCloseFound = false;
 
 		if (!registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
@@ -254,8 +256,10 @@ void MainLoopBehavior(entt::registry& registry)
 		registry.patch<GAME::PickupManager>(registry.view<GAME::PickupManager>().front());
 		for (auto entity : winView)
 		{
-			if (registry.any_of<APP::WindowClosed>(entity)) ++closedCount;
+			if (registry.any_of<APP::WindowClosed>(entity)) winCloseFound = true;
 			else registry.patch<APP::Window>(entity);
+			if (registry.any_of<APP::WindowClosed>(entity)) winCloseFound = true;
+			if (winCloseFound) ++closedCount;
 		}
 
 	} while (winView.size() != closedCount);

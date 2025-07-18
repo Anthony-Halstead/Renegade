@@ -281,34 +281,41 @@ namespace GAME
 
 	void Update(entt::registry& registry, entt::entity entity)
 	{
-#ifdef _DEBUG                     // dump once, in debug builds only
+#ifdef _DEBUG
 		static bool dumped = false;
 		if (!dumped) {
-			auto& mm = registry.ctx().get<DRAW::ModelManager>();
-			for (auto& [name, col] : mm.models)
+			for (auto& [name, col] : registry.ctx().get<DRAW::ModelManager>().models)
 				std::cout << "[ModelManager] " << name
 				<< "  meshes=" << col.entities.size() << '\n';
 			dumped = true;
 		}
 #endif
 
-		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
+		if (!registry.any_of<GAME::GameOver>(
+			registry.view<GAME::GameManager>().front()))
 		{
-			//RefreshBoundsFromWindow(registry);
 			UpdatePosition(registry);
 			UpdateClampToScreen(registry);
 			UpdateBullet(registry);
 			UpdateCollide(registry);
+
+			GAME::UpdatePickups(registry, entity);
+
 			UpdateHit(registry);
 			UpdatePlayers(registry, entity);
 			UpdateDestroy(registry);
 		}
-		else if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()))
-			registry.emplace_or_replace<UI::WinLoseScreen>(registry.view<UI::UIManager>().front());
+		else if (!registry.any_of<UI::WinLoseScreen>(
+			registry.view<UI::UIManager>().front()))
+		{
+			registry.emplace_or_replace<UI::WinLoseScreen>(
+				registry.view<UI::UIManager>().front());
+		}
 	}
 
 	CONNECT_COMPONENT_LOGIC()
 	{
-		registry.on_update<GameManager>().connect<Update>();
-	};
-}
+		registry.on_update<GameManager>()
+			.connect<&Update>();
+	}
+} // namespace GAME

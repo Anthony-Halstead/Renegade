@@ -1,24 +1,34 @@
-﻿#ifndef ITEM_PICKUP_COMPONENTS_H_
-#define ITEM_PICKUP_COMPONENTS_H_
+﻿#pragma once
 
-namespace GAME
-{
-	struct ItemDropConfig
-	{
-		float  dropChance;                      // Chance of a drop spawning
-		float  weights[3];    // Chance of each type Health, Shield, Weapon
-		float  fallSpeed;                        // units / sec (-Z) speed of the drop
-		float  despawnZ;                        // kill the drop when below this
-	};
-	enum class PickupType { Health, Shield, Ammo };
-	// tags & data
-	struct PickupManager { ItemDropConfig itemDropConfig; };
-	struct ItemPickup { PickupType type; };                               // marks a drop in the world
+namespace GAME {
 
-	struct PickupVelocity { float zPerSecond; };
-	void ConstructConfig(entt::registry& registry, entt::entity entity);
-	void UpdatePickups(entt::registry& r, entt::entity /*unused*/);
-	PickupType WeightedPick(ItemDropConfig& c);
-	void HandlePickup(entt::registry& reg, GW::MATH::GVECTORF pos);
-}
-#endif
+    /* ---------------- pick-up kinds ---------------- */
+    enum class PickupType { Health, Shield, Ammo };
+
+    /* ---------------- drop-configuration (read once from .ini) -------- */
+    struct ItemDropConfig {
+        float  dropChance = 0.25f;
+        float  weights[3] = { 0.40f, 0.35f, 0.25f };   // health, shield, ammo
+        float  fallSpeed = 2.5f;                      // units / second (-Z)
+        float  despawnZ = -50.f;                     // kill when below this
+    };
+
+    /* ---------------- ECS components ---------------- */
+    struct PickupManager { ItemDropConfig itemDropConfig; };          // 1× in scene
+    struct ItemPickup { PickupType type; };                        // on every drop
+    struct PickupVelocity { float zPerSecond; };                       // fall speed
+
+    /* client-side animation state (spin + bob) */
+    struct PickupAnim {
+        float baseY;      // reference Y so bob is additive
+        float spinRate;   // rad / second
+        float yaw;        // accumulates every frame
+        float bobPhase;   // initial phase offset for sine bob
+    };
+
+    /* ---------------- functions implemented in ItemDropSystem.cpp ---- */
+    void ConstructConfig(entt::registry& reg, entt::entity ent);
+    void HandlePickup(entt::registry& reg, GW::MATH::GVECTORF spawnPos);
+    void UpdatePickups(entt::registry& reg, entt::entity);
+
+} // namespace GAME

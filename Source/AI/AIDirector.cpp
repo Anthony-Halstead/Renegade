@@ -303,8 +303,6 @@ namespace AI
 	void Initialize(entt::registry& registry)
 	{
 		SpawnBoss(registry, "EnemyBoss_Station");
-		//SpawnBoss(registry, "EnemyBoss_UFO");
-		SpawnFinalBoss(registry);
 	}
 
 	void UpdateFormation(entt::registry& r)
@@ -553,7 +551,7 @@ namespace AI
 					spawnKamikaze -= (float)deltaTime;
 					if (spawnKamikaze <= 0.0f)
 					{
-						spawnKamikaze = 3.0f;
+						spawnKamikaze = 10.0f;
 						SpawnKamikaze(registry, registry.get<GAME::Transform>(bossEntity).matrix.row4);
 					}
 				}
@@ -649,7 +647,7 @@ namespace AI
 				GW::MATH::GVECTORF direction;
 				GW::MATH::GVector::SubtractVectorF(playerPos, transform.matrix.row4, direction);
 				GW::MATH::GVector::NormalizeF(direction, direction);
-				float speed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("OrbAttack").at("speed").as<float>();
+				float speed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Orb").at("speed").as<float>();
 				GW::MATH::GVECTORF velocity;
 				GW::MATH::GVector::ScaleF(direction, speed, velocity);
 				// Set the velocity of the orb
@@ -767,6 +765,7 @@ namespace AI
 			UpdateEnemies(registry, entity);
 			UpdateKamikazeEnemy(registry);
 			UpdateExplosions(registry);
+			UpdateOrbAttack(registry);
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);
 			UpdateBossSpawn(registry, entity, bossWaveCount);

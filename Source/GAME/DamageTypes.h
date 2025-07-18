@@ -62,30 +62,25 @@ namespace Damage
 		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);
 	}
 
-	inline void OrbAttack(entt::registry& reg, entt::entity entity)
+	inline void EnemyOrbAttack(entt::registry& reg, entt::entity entity)
 	{
 		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
 
 		entt::entity orbEntity = reg.create();
 		reg.emplace<AI::OrbAttack>(orbEntity);
-		reg.emplace<GAME::Velocity>(orbEntity);
-		reg.emplace<GAME::Collidable>(orbEntity);
-		reg.emplace<GAME::Bounded>(orbEntity);
-		reg.emplace<GAME::Transform>(orbEntity, GW::MATH::GIdentityMatrixF);
-		float orbDamage = (*config).at("Orb").at("damage").as<float>();
-		std::string orbModel = (*config).at("Orb").at("model").as<std::string>();
 
 		GAME::Transform* orbTransform = reg.try_get<GAME::Transform>(entity);
 		if (!orbTransform) return;
 
 		const float orbRadius = (*config).at("Orb").at("orbRadius").as<float>();
+		std::string orbModel = (*config).at("Orb").at("model").as<std::string>();
 		float orbGrowth = (*config).at("Orb").at("orbGrowth").as<float>();
 
 		UTIL::CreateTransform(reg, orbEntity, reg.get<GAME::Transform>(entity).matrix);
 		UTIL::CreateDynamicObjects(reg, orbEntity, orbModel);
 
 		GW::MATH::GVECTORF targetScale = { orbRadius, orbRadius, orbRadius, 0 };
-		reg.emplace<AI::ExplosionGrowth>(orbEntity, targetScale, orbGrowth);
+		reg.emplace<AI::OrbGrowth>(orbEntity, targetScale, orbGrowth);
 	}
 }
 #endif

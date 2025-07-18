@@ -215,5 +215,85 @@ namespace AI
 
 		UTIL::CreateDynamicObjects(R, enemyBoss, enemyBossModel);
 	}
+	inline void SpawnInvulnerableTop(entt::registry& R, GAME::Transform bossTransform)
+	{
+		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
+		entt::entity invulnTop = R.create();
+		std::string invulnModel = (*config).at("EnemyBoss_RedRocket").at("invulnerableTop").as<std::string>();
+		GAME::Transform invulnTransform{ bossTransform };
+		float invulnScale = (*config).at("EnemyBoss_RedRocket").at("scale").as<float>();
+		UTIL::Scale(invulnTransform, invulnScale);
+		invulnTransform.matrix.row4.z = 30.0f;
+		R.emplace<GAME::Transform>(invulnTop, invulnTransform);
+		R.emplace<AI::Visible>(invulnTop, false);
+		UTIL::CreateDynamicObjects(R, invulnTop, invulnModel);
+	}
+
+	// Idea for final boss to be able to turn on and off the shield possibly?
+	inline entt::entity SpawnVulnerableTop(entt::registry& R, GAME::Transform bossTransform)
+	{
+		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
+		entt::entity vulnTop = R.create();
+		std::string vulnModel = (*config).at("EnemyBoss_RedRocket").at("vulnerableTop").as<std::string>();
+		GAME::Transform vulnTransform{ bossTransform };
+		float vulnScale = (*config).at("EnemyBoss_RedRocket").at("scale").as<float>();
+		UTIL::Scale(vulnTransform, vulnScale);
+		vulnTransform.matrix.row4.z = 30.0f;
+		R.emplace<GAME::Transform>(vulnTop, vulnTransform);
+		R.emplace<AI::Visible>(vulnTop, false);
+		UTIL::CreateDynamicObjects(R, vulnTop, vulnModel);
+	}
+	inline void FinalBossPhaseOne(entt::registry& R, GAME::Transform bossTransform)
+	{
+		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::entity finalBossShield = R.create();
+		R.emplace<AI::FinalBossShield>(finalBossShield);
+		R.emplace<GAME::BossTitle>(finalBossShield, GAME::BossTitle{ "EnemyBoss_RedRocket_Shield" });
+		std::string finalBossShieldModel = (*config).at("EnemyBoss_RedRocket_Shield").at("model").as<std::string>();
+		unsigned finalBossShieldHealth = (*config).at("EnemyBoss_RedRocket_Shield").at("hitpoints").as<unsigned>();
+		GAME::Transform finalBossShieldTransform{ bossTransform };
+		float finalBossShieldScale = (*config).at("EnemyBoss_RedRocket_Shield").at("scale").as<float>();
+		UTIL::Scale(finalBossShieldTransform, finalBossShieldScale);
+		finalBossShieldTransform.matrix.row4.z = 30.0f;
+		R.emplace<GAME::Health>(finalBossShield, finalBossShieldHealth);
+		R.emplace<GAME::Transform>(finalBossShield, finalBossShieldTransform);
+		R.emplace<GAME::PriorFrameData>(finalBossShield, GAME::PriorFrameData{ finalBossShieldHealth });
+		UTIL::CreateDynamicObjects(R, finalBossShield, finalBossShieldModel);
+	}
+
+	// one idea for the shield to act as the first phase of the boss fight
+	inline void SpawnFinalBoss(entt::registry& R)
+	{
+		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::entity finalBoss = R.create();
+		R.emplace<GAME::Enemy_Boss>(finalBoss);
+		R.emplace<GAME::BossTitle>(finalBoss, GAME::BossTitle{ "EnemyBoss_RedRocket" });
+		std::string finalBossModel = (*config).at("EnemyBoss_RedRocket").at("model").as<std::string>();
+		std::string finalBossInvulnTop = (*config).at("EnemyBoss_RedRocket").at("invulnerableTop").as<std::string>();
+		std::string finalBossVulnTop = (*config).at("EnemyBoss_RedRocket").at("vulnerableTop").as<std::string>();
+		unsigned finalBossHealth = (*config).at("EnemyBoss_RedRocket").at("hitpoints").as<unsigned>();
+		GAME::Transform finalBossTransform{ GW::MATH::GIdentityMatrixF };
+		float finalBossScale = (*config).at("EnemyBoss_RedRocket").at("scale").as<float>();
+		UTIL::Scale(finalBossTransform, finalBossScale);
+		finalBossTransform.matrix.row4.z = 30.0f;
+		R.emplace<GAME::Health>(finalBoss, finalBossHealth);
+		R.emplace<GAME::Transform>(finalBoss, finalBossTransform);
+		R.emplace<GAME::SpawnEnemies>(finalBoss, 5.0f);
+		R.emplace<AI::SpawnKamikazeEnemy>(finalBoss);
+		R.emplace<GAME::PriorFrameData>(finalBoss, GAME::PriorFrameData{ finalBossHealth });
+
+		UTIL::CreateDynamicObjects(R, finalBoss, finalBossModel);
+
+		// Spawns in shield as a first phase fight idea
+		FinalBossPhaseOne(R, finalBossTransform);
+
+		// Idea here was to use the component to turn on and off the shield when able to damage the boss
+		//entt::entity invulnTop = SpawnInvulnerableTop(R, finalBossTransform);
+		//entt::entity vulnTop = SpawnVulnerableTop(R, finalBossTransform);
+
+		//R.emplace<AI::BossParts>(finalBoss, AI::BossParts{ vulnTop, invulnTop });
+	}	
 }
 #endif

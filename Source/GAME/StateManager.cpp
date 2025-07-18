@@ -55,10 +55,9 @@ namespace GAME
 
 	// Component functions
 
-	// Pre-implementation included in the event that we opt for time-based scoring.
+	// Provide an object name and a score location and this will update the score according to the data it finds
 	void ScoreEvent(entt::registry& registry, const std::string name, const std::string loc)
 	{
-		// TODO: grab config time-based score increase value, if one exists.
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 		unsigned score = (*config).at(name).at(loc).as<unsigned>();
 
@@ -91,6 +90,7 @@ namespace GAME
 		}
 	}
 
+	// See MonitorPlayerHealth but replace "player" with "boss" in ur head
 	void MonitorBossHealth(entt::registry& registry)
 	{
 		entt::basic_view bosses = registry.view<Enemy_Boss, Health, PriorFrameData>();
@@ -128,6 +128,7 @@ namespace GAME
 		}
 	}
 
+	// See MonitorPlayerHealth but replace "player" with "enemy" in ur head
 	void MonitorEnemyHealth(entt::registry& registry)
 	{
 		entt::basic_view enemies = registry.view<Enemy, Health>();

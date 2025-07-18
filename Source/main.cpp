@@ -3,6 +3,7 @@
 #include "CCL.h"
 #include "UTIL/Utilities.h"
 // include all components, tags, and systems used by this program
+#include "GAME/ItemPickupComponents.h"
 #include "DRAW/DrawComponents.h"
 #include "GAME/GameComponents.h"
 #include "APP/Window.hpp"
@@ -10,7 +11,6 @@
 #include "AUDIO/AudioSystem.h"
 #include "AI/AIComponents.h"
 #include "UI/UIComponents.h"
-#include "GAME/ItemPickupComponents.h"
 // Local routines for specific application behavior
 
 void GraphicsBehavior(entt::registry& registry);
@@ -72,10 +72,13 @@ void AIBehavior(entt::registry& registry)
 	auto e = registry.create();
 	registry.emplace<AI::AIDirector>(e);
 }
-void PickupBehavior(entt::registry& registry) {
+
+void PickupBehavior(entt::registry& registry)
+{
 	auto ent = registry.create();
-	registry.emplace<GAME::PickupManager>(ent, GAME::PickupManager{ GAME::ItemDropConfig{} });
+	registry.emplace<GAME::PickupManager>(ent);   // ? no ItemDropConfig here
 }
+
 void UIBehavior(entt::registry& registry)
 {
 	auto winView = registry.view<GW::SYSTEM::GWindow>();
@@ -231,6 +234,7 @@ void MainLoopBehavior(entt::registry& registry)
 	auto splashStart = std::chrono::steady_clock::now();
 
 	int closedCount;
+	bool winCloseFound = false;
 	auto winView = registry.view<APP::Window>();
 	auto& deltaTime = registry.ctx().emplace<UTIL::DeltaTime>().dtSec;
 
@@ -244,6 +248,7 @@ void MainLoopBehavior(entt::registry& registry)
 		deltaTime = elapsed;
 
 		closedCount = 0;
+		winCloseFound = false;
 
 		if (!registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
@@ -254,8 +259,10 @@ void MainLoopBehavior(entt::registry& registry)
 		registry.patch<GAME::PickupManager>(registry.view<GAME::PickupManager>().front());
 		for (auto entity : winView)
 		{
-			if (registry.any_of<APP::WindowClosed>(entity)) ++closedCount;
+			if (registry.any_of<APP::WindowClosed>(entity)) winCloseFound = true;
 			else registry.patch<APP::Window>(entity);
+			if (registry.any_of<APP::WindowClosed>(entity)) winCloseFound = true;
+			if (winCloseFound) ++closedCount;
 		}
 
 	} while (winView.size() != closedCount);

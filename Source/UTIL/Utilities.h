@@ -42,9 +42,16 @@ namespace UTIL
 	float Distance(const GW::MATH::GVECTORF& a, const GW::MATH::GVECTORF& b);
 
 	bool RotateTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetPosition, float step);
+	/// returns true when we are within `arrivalDist` of the target
+	bool SteerTowards(GAME::Velocity& vel,
+		const GW::MATH::GVECTORF& from,
+		const GW::MATH::GVECTORF& to,
+		float maxSpeed,
+		float arrivalDist = 0.1f);
+
 
 	bool MoveTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetPosition, float step);
-
+	void RotateContinuous(GAME::Transform& transform, float step, char axis = 'Y');
 	bool ScaleTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetScale, float step);
 	void Scale(GAME::Transform& transform, float scale);
 	GW::MATH::GOBBF BuildOBB(const GW::MATH::GOBBF& local, const GAME::Transform& T);

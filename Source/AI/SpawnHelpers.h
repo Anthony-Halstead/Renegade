@@ -14,6 +14,56 @@ namespace AI
 		R.emplace<FormationAnchor>(a, FormationAnchor{ GW::MATH::GIdentityVectorF, slots });
 		return a;
 	}
+	inline void SpawnMineDrone(entt::registry& R, const GW::MATH::GVECTORF& spawnPos)
+	{
+		using namespace GW::MATH;
+		const auto& cfg = *R.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::entity d = R.create();
+		R.emplace<MineDroneSettings>(d);
+		auto& data = R.emplace<MineDrone>(d);
+		data.targetPos = UTIL::RandomPointInWindowXZ(R);
+		data.targetPos.y = 0.f;
+
+		R.emplace<GAME::Enemy>(d);
+		R.emplace<GAME::Health>(d, 1u);
+		R.emplace<GAME::Velocity>(d);
+
+		GAME::Transform T{ GIdentityMatrixF };
+		T.matrix.row4 = spawnPos;
+		R.emplace<GAME::Transform>(d, T);
+
+		const std::string model = cfg.at("MineDrone").at("model").as<std::string>();
+		UTIL::CreateDynamicObjects(R, d, model);
+	}
+	inline void SpawnSpinningDrone(entt::registry& registry, const GW::MATH::GVECTORF& spawnPos)
+	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+
+		entt::entity drone = registry.create();
+
+		GAME::Transform droneTransform{ GW::MATH::GIdentityMatrixF };
+		droneTransform.matrix.row4 = spawnPos;
+		registry.emplace<GAME::Transform>(drone, droneTransform);
+
+		auto& droneSettings = registry.emplace<AI::SpinningDroneSettings>(drone);
+		droneSettings.spinSpeed = G_PI_F;
+		droneSettings.bulletFireInterval = 1.0f;
+
+		auto& droneData = registry.emplace<AI::SpinningDrone>(drone);
+		droneData.targetPosition = UTIL::RandomPointInWindowXZ(registry);
+		droneData.targetPosition.y = 0.f;
+		droneData.reachedTarget = false;
+		droneData.bulletFireTimer = droneSettings.bulletFireInterval;
+
+		registry.emplace<GAME::Velocity>(drone, GAME::Velocity{});
+		registry.emplace<GAME::Enemy>(drone);
+		unsigned int droneHealth = (*config).at("SpinningDrone").at("hitpoints").as<unsigned int>();
+		registry.emplace<GAME::Health>(drone, droneHealth);
+
+		std::string droneModel = (*config).at("SpinningDrone").at("model").as<std::string>();
+		UTIL::CreateDynamicObjects(registry, drone, droneModel);
+	}
 	inline void SpawnMember(entt::registry& R, entt::entity anchor, uint16_t idx, const GW::MATH::GVECTORF& spawnPos, const char* name)
 	{
 		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;

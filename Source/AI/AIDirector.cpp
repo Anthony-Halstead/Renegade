@@ -270,7 +270,34 @@ namespace AI
 	}
 	void UpdateBossThreeBehavior(entt::registry& registry, entt::entity& entity)
 	{
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+		
+		// Only proceed if the boss entity is valid and alive
+		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
+			return;
 
+		auto& hp = registry.get<GAME::Health>(entity);
+		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
+
+		// Only spawn if boss is alive
+		if (hp.health <= 0)
+			return;
+
+		// Decrement spawn timer
+		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+		spawn.spawnTimer -= (float)deltaTime;
+
+		// Check for lesser enemies
+		auto lesserEnemies = registry.view<GAME::Enemy>();
+		if (spawn.spawnTimer <= 0.0f && lesserEnemies.empty())
+		{
+			spawn.spawnTimer = 20.0f; // Reset timer
+
+			// Spawn a wave specific to this boss
+			auto& bossTransform = registry.get<GAME::Transform>(entity);
+			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+			SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy4", 10);
+		}
 	}
 
 	void Initialize(entt::registry& registry)
@@ -447,8 +474,8 @@ namespace AI
 					UpdateBossOneBehavior(registry, ent);
 				else if (title.name == "EnemyBoss_UFO")
 					UpdateBossTwoBehavior(registry, ent);
-				//else if (title.name == "EnemyBoss_Final")
-				//	SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy3", 10);
+				else if (title.name == "EnemyBoss_RedRocket")
+					UpdateBossThreeBehavior(registry, ent);
 			}
 			bossEntity = ent;
 		}
@@ -473,6 +500,7 @@ namespace AI
 						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
 						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
 						SpawnFlock(registry, 20, bossPos);
+						SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
 					}
 				}
 			}
@@ -523,7 +551,7 @@ namespace AI
 					spawnKamikaze -= (float)deltaTime;
 					if (spawnKamikaze <= 0.0f)
 					{
-						spawnKamikaze = 3.0f;
+						spawnKamikaze = 10.0f;
 						SpawnKamikaze(registry, registry.get<GAME::Transform>(bossEntity).matrix.row4);
 					}
 				}
@@ -598,6 +626,51 @@ namespace AI
 		}
 	}
 
+	void UpdateOrbAttack(entt::registry& registry)
+	{
+		// Spawn orb attack and then grow until target radisu is reached
+		auto orbView = registry.view<AI::OrbAttack, GAME::Transform, AI::OrbGrowth>();
+		for (auto ent : orbView)
+		{
+			auto& transform = orbView.get<GAME::Transform>(ent);
+			auto& growth = orbView.get<AI::OrbGrowth>(ent);
+			GW::MATH::GVECTORF targetRadius = growth.targetScale;
+			const float growthRate = growth.growthRate;
+			// Scale the orb towards the target radius
+			if (UTIL::ScaleTowards(transform, targetRadius, growthRate))
+			{
+				// Move towards the player
+				entt::basic_view players = registry.view<GAME::Player, GAME::Transform>();
+				if (players.begin() == players.end()) continue;
+				auto& playerTransform = registry.get<GAME::Transform>(*players.begin());
+				GW::MATH::GVECTORF playerPos = playerTransform.matrix.row4;
+				GW::MATH::GVECTORF direction;
+				GW::MATH::GVector::SubtractVectorF(playerPos, transform.matrix.row4, direction);
+				GW::MATH::GVector::NormalizeF(direction, direction);
+				float speed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Orb").at("speed").as<float>();
+				GW::MATH::GVECTORF velocity;
+				GW::MATH::GVector::ScaleF(direction, speed, velocity);
+				// Set the velocity of the orb
+				if (registry.any_of<GAME::Velocity>(ent))
+				{
+					auto& vel = registry.get<GAME::Velocity>(ent);
+					vel.vec = velocity;
+				}
+				else
+				{
+					registry.emplace<GAME::Velocity>(ent, velocity);
+				}
+
+				// If close enough to player, explode and damage player
+				if (UTIL::Distance(transform.matrix.row4, playerPos) < 1.0f)
+				{
+					registry.emplace<GAME::Destroy>(ent);
+					registry.remove<AI::OrbAttack>(ent);
+				}
+			}
+		}
+	}
+
 	void UpdateKamikazeEnemy(entt::registry& registry)
 	{
 		// Move towards player and explode on contact
@@ -668,6 +741,11 @@ namespace AI
 					SpawnBoss(registry, "EnemyBoss_UFO");
 				++bossWaveCount;
 			}
+			else if (bossWaveCount == bossCount)
+			{
+				SpawnFinalBoss(registry);
+				bossWaveCount++;
+			}
 			else
 			{
 				// All bosses defeated, trigger game over
@@ -687,6 +765,7 @@ namespace AI
 			UpdateEnemies(registry, entity);
 			UpdateKamikazeEnemy(registry);
 			UpdateExplosions(registry);
+			UpdateOrbAttack(registry);
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);
 			UpdateBossSpawn(registry, entity, bossWaveCount);

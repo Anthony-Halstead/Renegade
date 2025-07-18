@@ -30,15 +30,6 @@ namespace GAME
 		GW::MATH::GVECTORF position;
 	};
 
-	struct EnemyState {
-		enum class State {
-			Moving,
-			Ready,
-			Attacking
-		} state;
-	};
-
-
 	struct Firing {
 		float cooldown;
 	};

@@ -334,7 +334,7 @@ namespace UI
 		auto& window = registry.get<APP::Window>(entity);
 		auto& ui = registry.get<UIManager>(entity);
 
-		ui.blitter->ClearColor(0x00);
+		ui.blitter->ClearColor(0x0);
 
 		DisplayScores(registry, ui);
 		DisplayPlayerHealth(registry, ui, window);
@@ -362,8 +362,6 @@ namespace UI
 	{
 		auto& ui = registry.get<UIManager>(entity);
 
-		ui.blitter->Relinquish();
-		
 		delete ui.blitter;
 		delete ui.font;
 		delete ui.overlay;

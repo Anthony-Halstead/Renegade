@@ -30,10 +30,10 @@ namespace UI
 
 	struct SplashScreen
 	{
-		int maxSplashScreens;
 		float splashTime;
 		float fadeDuration;
 		int splash = 0;
+		int maxSplashScreens = 3;
 		bool fadingIn = true;
 		bool fadingOut = false;
 		float splashDuration = 0.f;

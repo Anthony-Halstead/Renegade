@@ -62,25 +62,26 @@ namespace Damage
 		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);
 	}
 
-	inline void EnemyOrbAttack(entt::registry& reg, entt::entity entity)
+	inline void EnemyOrbAttack(entt::registry& reg, const GW::MATH::GVECTORF& spawnPos)
 	{
 		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
 
 		entt::entity orbEntity = reg.create();
+
 		reg.emplace<AI::OrbAttack>(orbEntity);
-
-		GAME::Transform* orbTransform = reg.try_get<GAME::Transform>(entity);
-		if (!orbTransform) return;
-
 		const float orbRadius = (*config).at("Orb").at("orbRadius").as<float>();
 		std::string orbModel = (*config).at("Orb").at("model").as<std::string>();
 		float orbGrowth = (*config).at("Orb").at("orbGrowth").as<float>();
 
-		UTIL::CreateTransform(reg, orbEntity, reg.get<GAME::Transform>(entity).matrix);
+		GAME::Transform T{ GW::MATH::GIdentityMatrixF };
+		T.matrix.row4 = spawnPos;
+		reg.emplace<GAME::Transform>(orbEntity, T);
+
 		UTIL::CreateDynamicObjects(reg, orbEntity, orbModel);
 
 		GW::MATH::GVECTORF targetScale = { orbRadius, orbRadius, orbRadius, 0 };
 		reg.emplace<AI::OrbGrowth>(orbEntity, targetScale, orbGrowth);
+
 	}
 }
 #endif

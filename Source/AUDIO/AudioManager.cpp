@@ -34,7 +34,7 @@ namespace AUDIO
 		// Music Initialization
 		// --------------------
 		auto& musicHandle = reg.emplace<MusicHandle>(ent);
-		const std::vector<std::string> trackKeys = { "boss", "menu", "intro", "win", "lose" };
+		const std::vector<std::string> trackKeys = { "boss", "menu", "intro", "win", "lose","bossOne","bossTwo","bossThree" };
 
 		float musicVolume = (*config).at("AudioSettings").at("musicVolume").as<float>();
 		float minRadius = (*config).at("AudioSettings").at("attenuationMinRadius").as<float>();
@@ -78,7 +78,7 @@ namespace AUDIO
 		// ---------------------
 		SoundLibrary sfxLibrary;
 
-		const std::vector<std::string> sfx2DKeys = { "menuClick", "pickup", "error", "confirm" };
+		const std::vector<std::string> sfx2DKeys = { "menuClick", "pickup", "error", "confirm", "shoot" };
 		for (const auto& key : sfx2DKeys) {
 			try {
 				std::string path = (*config).at("SFX").at(key).as<std::string>();

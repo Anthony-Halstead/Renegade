@@ -90,7 +90,7 @@ void Shoot(entt::registry& registry, entt::entity& entity,
 					const auto& bulletTransform = registry.get<GAME::Transform>(bullet).matrix;
 					GW::MATH::GVECTORF bulletPos = bulletTransform.row4;
 
-					AUDIO::AudioSystem::PlaySFX("menuClick", bulletPos);
+					AUDIO::AudioSystem::PlaySFX("shoot", bulletPos);
 				}
 			}
 

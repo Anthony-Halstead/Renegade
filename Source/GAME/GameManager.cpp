@@ -95,7 +95,7 @@ namespace GAME
 	// Update functions
 	void UpdatePosition(entt::registry& reg)
 	{
-	 const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
+		const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
 
 		auto movers = reg.view<Transform, DRAW::MeshCollection>();
 		for (auto e : movers)
@@ -128,7 +128,7 @@ namespace GAME
 					reg.get<DRAW::GPUInstance>(mesh).transform = T.matrix;
 			}
 		}
-  }
+	}
 
 	void UpdateCollide(entt::registry& reg)
 	{
@@ -193,6 +193,7 @@ namespace GAME
 						.at("invulnPeriod").as<float>());
 					std::cout << "Player's current health: "
 						<< reg.get<Health>(a).health << '\n';
+					return;
 				}
 
 				// Explosion damage
@@ -205,6 +206,7 @@ namespace GAME
 						.at("invulnPeriod").as<float>());
 					std::cout << "Player's current health: "
 						<< reg.get<Health>(a).health << '\n';
+					return;
 				}
 
 				// Orb attack
@@ -215,10 +217,14 @@ namespace GAME
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
+
+
+					reg.emplace_or_replace<Destroy>(b);
+
 					std::cout << "Player's current health: "
 						<< reg.get<Health>(a).health << '\n';
+					return;
 				}
-
 			};
 
 		for (auto itA = colliders.begin(); itA != colliders.end(); ++itA)

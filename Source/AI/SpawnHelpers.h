@@ -1,6 +1,7 @@
 ﻿#include "AIComponents.h"
 #include "../GAME/GameComponents.h"
 #include "../UTIL/Utilities.h"
+#include "../AUDIO/AudioSystem.h"
 #include <random> 
 #include <cmath>
 #ifndef SPAWN_HELPERS_H_
@@ -214,6 +215,10 @@ namespace AI
 		R.emplace<GAME::PriorFrameData>(enemyBoss, GAME::PriorFrameData{ bossHealth });
 
 		UTIL::CreateDynamicObjects(R, enemyBoss, enemyBossModel);
+		if (strcmp(name, "EnemyBoss_Station") == 0)
+			AUDIO::AudioSystem::PlayMusicTrack("bossOne");
+		else if (strcmp(name, "EnemyBoss_UFO") == 0)
+			AUDIO::AudioSystem::PlayMusicTrack("bossTwo");
 	}
 	inline void SpawnInvulnerableTop(entt::registry& R, GAME::Transform bossTransform)
 	{
@@ -285,7 +290,7 @@ namespace AI
 		R.emplace<GAME::PriorFrameData>(finalBoss, GAME::PriorFrameData{ finalBossHealth });
 
 		UTIL::CreateDynamicObjects(R, finalBoss, finalBossModel);
-
+		AUDIO::AudioSystem::PlayMusicTrack("bossThree");
 		// Spawns in shield as a first phase fight idea
 		FinalBossPhaseOne(R, finalBossTransform);
 
@@ -294,6 +299,6 @@ namespace AI
 		//entt::entity vulnTop = SpawnVulnerableTop(R, finalBossTransform);
 
 		//R.emplace<AI::BossParts>(finalBoss, AI::BossParts{ vulnTop, invulnTop });
-	}	
+	}
 }
 #endif

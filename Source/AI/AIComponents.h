@@ -57,7 +57,10 @@ namespace AI
 		uint16_t index{ 0 };
 	};
 
-
+	struct OrbLifetime
+	{
+		float timeRemaining = 6.f;
+	};
 	struct MoveTarget { GW::MATH::GVECTORF pos; };
 	struct CircleTag {};
 	struct TimeAtPosition { float timeAtPosition = 0.0f; };
@@ -74,6 +77,11 @@ namespace AI
 	struct OrbGrowth {
 		GW::MATH::GVECTORF targetScale;
 		float growthRate;
+	};
+	struct OrbAttackCooldown
+	{
+		float cooldown = 6.0f;
+		float timer = 0.0f;
 	};
 	struct Kamikaze {};
 	struct SpawnKamikazeEnemy { float spawnTimer = 0.0f; };

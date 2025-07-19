@@ -1,4 +1,4 @@
-#include "AIComponents.h"
+﻿#include "AIComponents.h"
 #include "SpawnHelpers.h"
 #include "../GAME/GameComponents.h"
 #include "../UTIL/Utilities.h"
@@ -7,6 +7,7 @@
 #include <random>
 #include <algorithm>
 #include "../GAME/DamageTypes.h"
+
 
 namespace AI
 {
@@ -276,7 +277,7 @@ namespace AI
 		spawn.spawnTimer -= deltaTime;
 
 		auto lesserEnemies = registry.view<GAME::Enemy>();
-		if (spawn.spawnTimer <= 0.0f)
+		if (spawn.spawnTimer <= 0.0f && lesserEnemies.empty())
 		{
 			spawn.spawnTimer = 20.0f;
 			auto& bossTransform = registry.get<GAME::Transform>(entity);
@@ -459,6 +460,21 @@ namespace AI
 			}
 		}
 	}
+	void OrbSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
+	{
+		if (!R.any_of<OrbAttackCooldown>(boss)) {
+			R.emplace_or_replace<OrbAttackCooldown>(boss, OrbAttackCooldown{ 6.f, 5.f });
+		}
+		const auto& bossPos = R.get<GAME::Transform>(boss).matrix.row4;
+		auto& cd = R.get<OrbAttackCooldown>(boss);
+		cd.timer -= dt;
+		if (cd.timer > 0.f)
+			return;
+		Damage::EnemyOrbAttack(R, bossPos);
+
+		cd.timer = cd.cooldown;
+	}
+
 	void UpdateBossOneBehavior(entt::registry& R, entt::entity boss)
 	{
 		if (!R.valid(boss) || !R.all_of<GAME::Health, GAME::SpawnEnemies>(boss))
@@ -472,11 +488,9 @@ namespace AI
 
 		if (!R.any_of<GAME::SpawnEnemies>(boss))
 			R.emplace_or_replace<GAME::SpawnEnemies>(boss);
-
+		OrbSpawnBehavior(R, boss, dt);
 		WaveSpawningBehavior(R, boss, dt);
-
 		MineBehavior(R, boss, dt);
-
 		KamikazeSpawnBehavior(R, boss, dt);
 	}
 	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity entity)
@@ -628,11 +642,10 @@ namespace AI
 		if (bossState.state == AI::BossState::ArcAttack)
 			ArcAttackBehavior(registry, entity, fan, dt);
 	}
-
 	void UpdateBossThreeBehavior(entt::registry& registry, entt::entity& entity)
 	{
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-		
+
 		// Only proceed if the boss entity is valid and alive
 		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
 			return;
@@ -668,13 +681,19 @@ namespace AI
 
 	void UpdateFormation(entt::registry& r)
 	{
-		auto view = r.view<FormationMember, MoveTarget, GAME::Transform, GAME::Velocity>();
+		auto view = r.view<
+			FormationMember,
+			MoveTarget,
+			GAME::Transform,
+			GAME::Velocity
+		>(entt::exclude<AI::FlyOffScreen, AI::ReturningToPosition>);
 
 		const float rotSpeedDeg = 90.f;
 		const float rotStepRad = G_DEGREE_TO_RADIAN_F(rotSpeedDeg) * r.ctx().get<UTIL::DeltaTime>().dtSec;
 
 		for (auto e : view)
 		{
+
 			const auto& fm = view.get<FormationMember>(e);
 			if (!r.valid(fm.anchor) || !r.all_of<FormationAnchor>(fm.anchor)) continue;
 			const auto& anchor = r.get<FormationAnchor>(fm.anchor);
@@ -695,7 +714,7 @@ namespace AI
 
 	void UpdateLocomotion(entt::registry& r)
 	{
-		auto view = r.view<MoveTarget, GAME::Velocity, GAME::Transform>();
+		auto view = r.view<MoveTarget, GAME::Velocity, GAME::Transform>(entt::exclude<FlockMember>);
 		double dt = r.ctx().get<UTIL::DeltaTime>().dtSec;
 		float speed = (*r.ctx().get<UTIL::Config>().gameConfig).at("Enemy1").at("speed").as<float>();
 
@@ -831,12 +850,19 @@ namespace AI
 			if (registry.all_of<GAME::BossTitle>(ent))
 			{
 				auto& title = registry.get<GAME::BossTitle>(ent);
-				if (title.name == "EnemyBoss_Station")
+				if (title.name == "EnemyBoss_Station") {
+
 					UpdateBossOneBehavior(registry, ent);
-				else if (title.name == "EnemyBoss_UFO")
+				}
+				else if (title.name == "EnemyBoss_UFO") {
+
 					UpdateBossTwoBehavior(registry, ent);
-				else if (title.name == "EnemyBoss_RedRocket")
+				}
+				else if (title.name == "EnemyBoss_RedRocket") {
+
 					UpdateBossThreeBehavior(registry, ent);
+				}
+
 			}
 			bossEntity = ent;
 		}
@@ -955,49 +981,56 @@ namespace AI
 
 	void UpdateOrbAttack(entt::registry& registry)
 	{
-		// Spawn orb attack and then grow until target radisu is reached
 		auto orbView = registry.view<AI::OrbAttack, GAME::Transform, AI::OrbGrowth>();
-		for (auto ent : orbView)
-		{
-			auto& transform = orbView.get<GAME::Transform>(ent);
-			auto& growth = orbView.get<AI::OrbGrowth>(ent);
-			GW::MATH::GVECTORF targetRadius = growth.targetScale;
-			const float growthRate = growth.growthRate;
-			// Scale the orb towards the target radius
-			if (UTIL::ScaleTowards(transform, targetRadius, growthRate))
-			{
-				// Move towards the player
-				entt::basic_view players = registry.view<GAME::Player, GAME::Transform>();
-				if (players.begin() == players.end()) continue;
-				auto& playerTransform = registry.get<GAME::Transform>(*players.begin());
-				GW::MATH::GVECTORF playerPos = playerTransform.matrix.row4;
-				GW::MATH::GVECTORF direction;
-				GW::MATH::GVector::SubtractVectorF(playerPos, transform.matrix.row4, direction);
-				GW::MATH::GVector::NormalizeF(direction, direction);
-				float speed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Orb").at("speed").as<float>();
-				GW::MATH::GVECTORF velocity;
-				GW::MATH::GVector::ScaleF(direction, speed, velocity);
-				// Set the velocity of the orb
-				if (registry.any_of<GAME::Velocity>(ent))
-				{
-					auto& vel = registry.get<GAME::Velocity>(ent);
-					vel.vec = velocity;
-				}
-				else
-				{
-					registry.emplace<GAME::Velocity>(ent, velocity);
-				}
+		if (orbView.begin() == orbView.end()) return;
 
-				// If close enough to player, explode and damage player
-				if (UTIL::Distance(transform.matrix.row4, playerPos) < 1.0f)
-				{
-					registry.emplace<GAME::Destroy>(ent);
-					registry.remove<AI::OrbAttack>(ent);
-				}
-			}
+		auto players = registry.view<GAME::Player, GAME::Transform>();
+		if (players.begin() == players.end()) return;
+
+		const auto& playerTransform = registry.get<GAME::Transform>(*players.begin());
+		const GW::MATH::GVECTORF playerPos = playerTransform.matrix.row4;
+
+		const float dt = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
+		const auto& cfg = *registry.ctx().get<UTIL::Config>().gameConfig;
+		const float speed = cfg.at("Orb").at("speed").as<float>();
+
+		for (auto e : orbView)
+		{
+			auto& T = orbView.get<GAME::Transform>(e);
+			auto& growth = orbView.get<AI::OrbGrowth>(e);
+
+			bool finishedGrowing = UTIL::ScaleTowards(T, growth.targetScale, growth.growthRate * dt);
+
+			if (!finishedGrowing)
+				continue;
+
+			if (registry.any_of<GAME::Velocity>(e))
+				continue;
+
+			GW::MATH::GVECTORF dir;
+			GW::MATH::GVector::SubtractVectorF(playerPos, T.matrix.row4, dir);
+			GW::MATH::GVector::NormalizeF(dir, dir);
+
+			GW::MATH::GVECTORF velScaled;
+			GW::MATH::GVector::ScaleF(dir, speed, velScaled);
+
+			registry.emplace<GAME::Velocity>(e, GAME::Velocity{ velScaled });
+			registry.emplace<AI::OrbLifetime>(e, AI::OrbLifetime{ 6.f });
 		}
 	}
-
+	void UpdateOrbLifetime(entt::registry& registry)
+	{
+		const double dt = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+		auto view = registry.view<AI::OrbAttack, AI::OrbLifetime>();
+		if (view.begin() == view.end()) return;
+		for (auto e : view)
+		{
+			auto& life = view.get<AI::OrbLifetime>(e);
+			life.timeRemaining -= static_cast<float>(dt);
+			if (life.timeRemaining <= 0.f)
+				registry.emplace_or_replace<GAME::Destroy>(e);
+		}
+	}
 	void UpdateKamikazeEnemy(entt::registry& registry)
 	{
 
@@ -1085,6 +1118,7 @@ namespace AI
 			UpdateKamikazeEnemy(registry);
 			UpdateExplosions(registry);
 			UpdateOrbAttack(registry);
+			UpdateOrbLifetime(registry);
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);
 			UpdateBossSpawn(registry, entity, bossWaveCount);

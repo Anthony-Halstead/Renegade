@@ -231,17 +231,17 @@ void GameplayBehavior(entt::registry& registry)
 void MainLoopBehavior(entt::registry& registry)
 {
 	AppState state = AppState::GameLoop;
-	int maxSplashScreens = 3;
-	float splashDuration = 2.f;
-	float fadeDuration = 1.f;
-	auto splashStart = std::chrono::steady_clock::now();
-
+	
 	int closedCount;
 	bool winCloseFound = false;
 	auto winView = registry.view<APP::Window>();
 	auto& deltaTime = registry.ctx().emplace<UTIL::DeltaTime>().dtSec;
 
-	registry.emplace<UI::SplashScreen>(registry.view<UI::UIManager>().front(), UI::SplashScreen{maxSplashScreens, splashDuration, fadeDuration});
+	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+
+	if(!(*config).at("UI").at("disableSplash").as<bool>())
+		registry.emplace<UI::SplashScreen>(registry.view<UI::UIManager>().front(), UI::SplashScreen{(*config).at("UI").at("splashDuration").as<float>(), (*config).at("UI").at("fadeDuration").as<float>()});
+	
 	registry.emplace<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
 	do {

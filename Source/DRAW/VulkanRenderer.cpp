@@ -758,6 +758,8 @@ namespace DRAW
 	// run this code when a VulkanRenderer component is updated
 	void Destroy_VulkanRenderer(entt::registry& registry, entt::entity entity)
 	{
+		registry.remove<UI::UIManager>(registry.view<UI::UIManager>().front());
+		
 		auto& vulkanRenderer = registry.get<VulkanRenderer>(entity);
 		vkDeviceWaitIdle(vulkanRenderer.device);
 
@@ -794,8 +796,6 @@ namespace DRAW
 		vkDestroyShaderModule(vulkanRenderer.device, vulkanRenderer.fragmentShader, nullptr);
 		vkDestroyPipelineLayout(vulkanRenderer.device, vulkanRenderer.pipelineLayout, nullptr);
 		vkDestroyPipeline(vulkanRenderer.device, vulkanRenderer.pipeline, nullptr);
-
-		registry.remove<UI::UIManager>(registry.view<UI::UIManager>().front());
 	}
 
 	// Use this MACRO to connect the EnTT Component Logic

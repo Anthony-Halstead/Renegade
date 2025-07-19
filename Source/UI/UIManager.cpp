@@ -19,6 +19,10 @@
 #include "img/RENEGADE_WinQuit.h"
 #include "img/RENEGADE_PauseContinue.h"
 #include "img/RENEGADE_PauseQuit.h"
+#include "img/SPLASH_EssentialGreensLogo.h"
+#include "img/SPLASH_GatewareLogo.h"
+#include "img/SPLASH_VulkanLogo.h"
+
 
 namespace UI
 {
@@ -65,7 +69,12 @@ namespace UI
 		}
 	}
 
-	unsigned BGRAtoARGB(const unsigned& color) {
+	int Convert2Dto1D(const int& x, const int& y, const unsigned& width) {
+		return y * width + x;
+	};
+
+	unsigned BGRAtoARGB(const unsigned& color)
+	{
 		const unsigned alpha = (color & 0x000000FF) << 24;
 		const unsigned red = (color & 0x0000FF00) << 8;
 		const unsigned green = (color & 0x00FF0000) >> 8;
@@ -74,7 +83,115 @@ namespace UI
 		return (alpha | red | green | blue);
 	}
 
-	void DisplayTitleScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned int* color_pix)
+	unsigned LerpColor(unsigned source, unsigned destination, float alpha)
+	{
+		unsigned sA = (source >> 24) & 0xFF;
+		unsigned sR = (source >> 16) & 0xFF;
+		unsigned sG = (source >> 8) & 0xFF;
+		unsigned sB = source & 0xFF;
+
+		unsigned dA = (destination >> 24) & 0xFF;
+		unsigned dR = (destination >> 16) & 0xFF;
+		unsigned dG = (destination >> 8) & 0xFF;
+		unsigned dB = destination & 0xFF;
+
+		unsigned rA = (unsigned)(sA * (1 - alpha) + dA * alpha);
+		unsigned rR = (unsigned)(sR * (1 - alpha) + dR * alpha);
+		unsigned rG = (unsigned)(sG * (1 - alpha) + dG * alpha);
+		unsigned rB = (unsigned)(sB * (1 - alpha) + dB * alpha);
+
+		return (rA << 24) | (rR << 16) | (rG << 8) | rB;
+	}
+
+	static void BlockImageTransfer(const Rect& source, const Point2D& pos, const int& sourceWidth, const unsigned* sourceArray, unsigned* color_pix, unsigned width, unsigned height) {
+		for (unsigned y = 0; y < source.height; ++y)
+		{
+			if (pos.y + y > height - 1)
+				break;
+			for (unsigned x = 0; x < source.width; ++x)
+			{
+				if (pos.x + x > width - 1)
+					break;
+				color_pix[Convert2Dto1D(pos.x + x, pos.y + y, width)] = BGRAtoARGB(sourceArray[Convert2Dto1D(source.x + x, source.y + y, sourceWidth)]);
+			}
+		}
+	};
+
+	void DisplaySplashScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
+	{
+		auto& splashScreen = registry.get<UI::SplashScreen>(registry.view<UI::UIManager>().front()); 
+		auto& deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
+
+		if (splashScreen.fadingIn)
+		{
+			splashScreen.fadeAlpha += deltaTime / splashScreen.fadeDuration;
+			if (splashScreen.fadeAlpha >= 1.f)
+			{
+				splashScreen.fadeAlpha = 1.f;
+				splashScreen.fadingIn = false;
+			}
+		} 
+		else if (splashScreen.fadingOut)
+		{
+			splashScreen.fadeAlpha -= deltaTime / splashScreen.fadeDuration;
+			if (splashScreen.fadeAlpha <= 0.f)
+			{
+				splashScreen.fadeAlpha = 0.f;
+				splashScreen.fadingOut = false;
+
+				++splashScreen.splash;
+
+				if (splashScreen.splash >= splashScreen.maxSplashScreens)
+				{
+					for (int i = 0; i < window.width * window.height; ++i) color_pix[i] = 0xFF000000;
+					registry.remove<UI::SplashScreen>(registry.view<UI::UIManager>().front());
+					return;
+				} 
+				splashScreen.fadingIn = true;
+			}
+		}
+		else
+		{
+			splashScreen.splashDuration += deltaTime;
+
+			if (splashScreen.splashDuration >= splashScreen.splashTime)
+			{
+				splashScreen.splashDuration = 0.f;
+				splashScreen.fadingOut = true;
+			}
+		}
+
+		const unsigned* img = nullptr;
+
+		switch (splashScreen.splash)
+		{
+		case 0:
+			img = EssentialGreensLogo_pixels;
+			break;
+		case 1:
+			img = GatewareLogo_pixels;
+			break;
+		case 2:
+			img = Vulkan_logo_pixels;
+			break;
+		}
+
+		if (!img)
+		{
+			registry.remove<UI::SplashScreen>(registry.view<UI::UIManager>().front());
+			return;
+		}
+
+		for (int i = 0; i < window.width * window.height; ++i)
+		{
+			unsigned splash = BGRAtoARGB(img[i]);
+			unsigned black = 0xFF000000;
+
+			color_pix[i] = LerpColor(black, splash, splashScreen.fadeAlpha);
+		}
+	}
+
+	void DisplayTitleScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
 	{
 		// TODO: make this more versatile; definitely needs to be refactored later
 		if (registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
@@ -96,38 +213,22 @@ namespace UI
 					registry.emplace<APP::WindowClosed>(registry.view<APP::Window>().front());
 			}
 
-			if (title.start)
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_TitleStart_pixels[i]);
-			else
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_TitleQuit_pixels[i]);
+			const unsigned* img = title.start ? RENEGADE_TitleStart_pixels : RENEGADE_TitleQuit_pixels;
+
+			for (int i = 0; i < window.width * window.height; ++i)
+				color_pix[i] = BGRAtoARGB(img[i]);
 		}
 	}
 
-	void DisplayWinLoseScreen_Helper(UI::WinLoseScreen& winLoseScreen, APP::Window& window, unsigned int* color_pix, bool W)
+	void DisplayWinLoseScreen_Helper(UI::WinLoseScreen& winLoseScreen, APP::Window& window, unsigned* color_pix, bool W)
 	{
-		if (W)
-		{
-			if (winLoseScreen.restart)
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_WinRestart_pixels[i]);
-			else
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_WinQuit_pixels[i]);
-		}
-		else
-		{
-			if (winLoseScreen.restart)
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_LoseRestart_pixels[i]);
-			else
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_LoseQuit_pixels[i]);
-		}
+		const unsigned* img = W ? winLoseScreen.restart ? RENEGADE_WinRestart_pixels : RENEGADE_WinQuit_pixels : winLoseScreen.restart ? RENEGADE_LoseRestart_pixels : RENEGADE_LoseQuit_pixels;
+
+		for (int i = 0; i < window.width * window.height; ++i)
+			color_pix[i] = BGRAtoARGB(img[i]);
 	}
 
-	void DisplayWinLoseScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned int* color_pix)
+	void DisplayWinLoseScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
 	{
 		if (registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()))
 		{
@@ -178,8 +279,8 @@ namespace UI
 			}
 		}
 	}
-	// TODO: fix bug with pressing esc multiple times: adds multiplee pause screens(?)
-	void DisplayPauseScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned int* color_pix)
+	// TODO: fix bug with pressing esc multiple times: adds multiple pause screens(?)
+	void DisplayPauseScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
 	{
 		if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
@@ -210,15 +311,12 @@ namespace UI
 				}
 			}
 
-			if (pauseScreen.pauseContinue)
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_PauseContinue_pixels[i]);
-			else
-				for (int i = 0; i < window.width * window.height; ++i)
-					color_pix[i] = BGRAtoARGB(RENEGADE_PauseQuit_pixels[i]);
+			const unsigned* img = pauseScreen.pauseContinue ? RENEGADE_PauseContinue_pixels : RENEGADE_PauseQuit_pixels;
+
+			for (int i = 0; i < window.width * window.height; ++i)
+				color_pix[i] = BGRAtoARGB(img[i]);
 		}
 	}
-
 	void Construct_UI(entt::registry& registry, entt::entity entity)
 	{
 		auto& win = registry.get<GW::SYSTEM::GWindow>(entity);
@@ -236,7 +334,7 @@ namespace UI
 		auto& window = registry.get<APP::Window>(entity);
 		auto& ui = registry.get<UIManager>(entity);
 
-		ui.blitter->ClearColor(0x0);
+		ui.blitter->ClearColor(0x00);
 
 		DisplayScores(registry, ui);
 		DisplayPlayerHealth(registry, ui, window);
@@ -246,9 +344,14 @@ namespace UI
 		ui.overlay->LockForUpdate(window.width * window.height, &color_pix);
 		ui.blitter->ExportResult(false, window.width, window.height, 0, 0, color_pix, nullptr, nullptr);
 
-		DisplayTitleScreen(registry, ui, window, color_pix);
-		DisplayWinLoseScreen(registry, ui, window, color_pix);
-		DisplayPauseScreen(registry, ui, window, color_pix);
+		if (!registry.any_of<UI::SplashScreen>(registry.view<UI::UIManager>().front()))
+		{
+			DisplayTitleScreen(registry, ui, window, color_pix);
+			DisplayWinLoseScreen(registry, ui, window, color_pix);
+			DisplayPauseScreen(registry, ui, window, color_pix);
+		}
+		else
+			DisplaySplashScreen(registry, ui, window, color_pix);
 
 		ui.overlay->Unlock();
 		ui.overlay->TransferOverlay();
@@ -259,6 +362,8 @@ namespace UI
 	{
 		auto& ui = registry.get<UIManager>(entity);
 
+		ui.blitter->Relinquish();
+		
 		delete ui.blitter;
 		delete ui.font;
 		delete ui.overlay;

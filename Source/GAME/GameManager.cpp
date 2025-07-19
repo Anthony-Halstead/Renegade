@@ -305,17 +305,12 @@ namespace GAME
 			UpdatePlayers(registry, entity);
 			UpdateDestroy(registry);
 		}
-		else if (!registry.any_of<UI::WinLoseScreen>(
-			registry.view<UI::UIManager>().front()))
-		{
-			registry.emplace_or_replace<UI::WinLoseScreen>(
-				registry.view<UI::UIManager>().front());
-		}
+		else if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()))
+			registry.emplace_or_replace<UI::WinLoseScreen>(registry.view<UI::UIManager>().front());
 	}
 
 	CONNECT_COMPONENT_LOGIC()
 	{
-		registry.on_update<GameManager>()
-			.connect<&Update>();
+		registry.on_update<GameManager>().connect<&Update>();
 	}
 } // namespace GAME

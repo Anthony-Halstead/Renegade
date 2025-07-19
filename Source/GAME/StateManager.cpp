@@ -187,9 +187,18 @@ namespace GAME
 		entt::basic_view enemies = registry.view<Enemy, Health>();
 		for (auto ent : enemies)
 		{
-			if (registry.get<Health>(ent).health <= 0) {
-				// communicate to UI or other systems that enemy has been defeated
-				ScoreEvent(registry, "Enemy1", "score");
+			if (registry.get<Health>(ent).health <= 0) 
+			{
+				if (registry.any_of</*EnemyTitle*/>(ent))
+				{
+					// std::string enemyName = registry.get<EnemyTitle>(ent).name; // Assuming EnemyTitle component exists
+					// ScoreEvent(registry, enemyName, "score");
+				}
+				else {
+					/// Debug
+					std::cout << "Enemy defeated, but no name was provided, no score awarded " << std::endl;
+					///
+				}
 			}
 		}
 	}

@@ -86,7 +86,14 @@ namespace AI
 	struct Kamikaze {};
 	struct SpawnKamikazeEnemy { float spawnTimer = 0.0f; };
 	struct RushTarget { GW::MATH::GVECTORF trg; };
-
+	struct LazerAttack {};
+	struct LazerSweep
+	{
+		GW::MATH::GVECTORF pointA;
+		GW::MATH::GVECTORF pointB;
+		float duration;
+		float width;
+	};
 	struct BossHalfHealth {};
 	struct BossFanAttack
 	{

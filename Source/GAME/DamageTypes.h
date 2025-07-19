@@ -52,14 +52,21 @@ namespace Damage
 	//	}
 	//}
 
-	inline void Lazer(entt::registry& reg, entt::entity entity)
+	inline void EnemyLazerAttack(entt::registry& reg, entt::entity entity,
+		const GW::MATH::GVECTORF& pointA, const GW::MATH::GVECTORF& pointB,
+		float duration, float width)
 	{
 		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
-
 		entt::entity lazerEntity = reg.create();
-		float lazerDamage = (*config).at("EnemyLazer").at("damage").as<float>();
+
+		const auto& transform = reg.get<GAME::Transform>(entity).matrix;
+		UTIL::CreateTransform(reg, lazerEntity, transform);
+
 		std::string lazerModel = (*config).at("EnemyLazer").at("model").as<std::string>();
-		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);
+		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);		
+
+		reg.emplace<AI::LazerSweep>(lazerEntity, pointA, pointB, duration, width);
+		reg.emplace<AI::LazerAttack>(lazerEntity);
 	}
 
 	inline void EnemyOrbAttack(entt::registry& reg, const GW::MATH::GVECTORF& spawnPos)

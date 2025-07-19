@@ -7,31 +7,6 @@
 
 namespace UTIL
 {
-	void LookAtMatrix(const GW::MATH::GVECTORF& position, const GW::MATH::GVECTORF& direction, 
-		GW::MATH::GMATRIXF& outMatrix, const GW::MATH::GVECTORF& up)
-	{
-		using namespace GW::MATH;
-
-		// Compute right vector
-		GVECTORF right;
-		GVector::CrossVector3F(up, direction, right);
-		GVector::NormalizeF(right, right);
-
-		// Recompute up to ensure orthogonality
-		GVECTORF upOrtho;
-		GVector::CrossVector3F(direction, right, upOrtho);
-		GVector::NormalizeF(upOrtho, upOrtho);
-
-		// Fill rotation part
-		outMatrix = GIdentityMatrixF;
-		outMatrix.row1.x = right.x;   outMatrix.row1.y = right.y;   outMatrix.row1.z = right.z;
-		outMatrix.row2.x = upOrtho.x; outMatrix.row2.y = upOrtho.y; outMatrix.row2.z = upOrtho.z;
-		outMatrix.row3.x = direction.x; outMatrix.row3.y = direction.y; outMatrix.row3.z = direction.z;
-
-		// Set translation
-		outMatrix.row4 = position;
-	}
-
 	GW::MATH::GVECTORF GetRandomVelocityVector()
 	{
 		GW::MATH::GVECTORF vel = { float((rand() % 20) - 10), 0.0f, float((rand() % 20) - 10) };

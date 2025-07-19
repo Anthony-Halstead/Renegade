@@ -55,8 +55,5 @@ namespace UTIL
 	bool ScaleTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetScale, float step);
 	void Scale(GAME::Transform& transform, float scale);
 	GW::MATH::GOBBF BuildOBB(const GW::MATH::GOBBF& local, const GAME::Transform& T);
-
-	void LookAtMatrix(const GW::MATH::GVECTORF& position, const GW::MATH::GVECTORF& direction, GW::MATH::GMATRIXF& outMatrix, const GW::MATH::GVECTORF& up = { 0,1,0,0 });
-
 } // namespace UTIL
 #endif // !UTILITIES_H_

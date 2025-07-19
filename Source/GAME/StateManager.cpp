@@ -189,10 +189,10 @@ namespace GAME
 		{
 			if (registry.get<Health>(ent).health <= 0) 
 			{
-				if (registry.any_of</*EnemyTitle*/>(ent))
+				if (registry.any_of<EnemyTitle>(ent))
 				{
-					// std::string enemyName = registry.get<EnemyTitle>(ent).name; // Assuming EnemyTitle component exists
-					// ScoreEvent(registry, enemyName, "score");
+					std::string enemyName = registry.get<EnemyTitle>(ent).name; // Assuming EnemyTitle component exists
+					ScoreEvent(registry, enemyName, "score");
 				}
 				else {
 					/// Debug

@@ -6,6 +6,8 @@
 #include "../UI/UIComponents.h"
 #include "../CCL.h"
 
+#define UUID "ab417dfa-142f-41af-a81a-dc91a1fcc8b5"
+
 namespace GAME
 {
 	// Helper functions
@@ -13,9 +15,8 @@ namespace GAME
 	void GetHighScores(entt::registry& registry) 
 	{
 		PastScores scoreBoard;
-		std::string uuid = "ab417dfa-142f-41af-a81a-dc91a1fcc8b5";
 
-		SB::Client sbClient(uuid);
+		SB::Client sbClient(UUID);
 
 		if (!sbClient.GetScores(scoreBoard.scores)) 
 		{
@@ -64,7 +65,7 @@ namespace GAME
 	{
 		entt::basic_view stateManager = registry.view<StateManager>();
 		if (stateManager.empty()) return;
-		SB::Client sbClient("ab417dfa-142f-41af-a81a-dc91a1fcc8b5");
+		SB::Client sbClient(UUID);
 		if (registry.any_of<Score>(stateManager.front()))
 		{
 			auto& scoreComponent = registry.get<Score>(stateManager.front());

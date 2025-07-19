@@ -168,25 +168,74 @@ namespace UTIL
 
 		return reached;
 	}
-	bool MoveTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetPosition, float step)
+
+	bool SteerTowards(GAME::Velocity& vel,
+		const GW::MATH::GVECTORF& from,
+		const GW::MATH::GVECTORF& to,
+		float maxSpeed,
+		float arrivalDist)
 	{
-		GW::MATH::GVECTORF& currentPosition = transform.matrix.row4;
+		using namespace GW::MATH;
 
-		GW::MATH::GVECTORF delta;
-		GW::MATH::GVector::SubtractVectorF(targetPosition, currentPosition, delta);
+		GVECTORF delta{ to.x - from.x, 0, to.z - from.z, 0 };
+		float d2 = delta.x * delta.x + delta.z * delta.z;
 
-		float dist = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
-
-		if (dist <= step) {
-			currentPosition = targetPosition;
+		if (d2 <= arrivalDist * arrivalDist)
+		{
+			vel.vec = { 0,0,0,0 };
 			return true;
 		}
 
-		GW::MATH::GVECTORF moveStep;
-		GW::MATH::GVector::ScaleF(delta, step / dist, moveStep);
-		GW::MATH::GVector::AddVectorF(currentPosition, moveStep, currentPosition);
+		float d = std::sqrt(d2);
+		GVECTORF dir;
+		GVector::ScaleF(delta, 1.f / d, dir);
+		GVector::ScaleF(dir, maxSpeed, vel.vec);
+		return false;
+	}
+
+	bool MoveTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetPosition, float step)
+	{
+		using namespace GW::MATH;
+
+		GVECTORF& currentPosition = transform.matrix.row4;
+
+		// Calculate delta only in the XZ plane
+		GVECTORF delta;
+		delta.x = targetPosition.x - currentPosition.x;
+		delta.y = 0.0f; // force flat movement
+		delta.z = targetPosition.z - currentPosition.z;
+		delta.w = 0.0f;
+
+		// Calculate distance in XZ plane only
+		float dist = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+
+		if (dist <= step) {
+			currentPosition.x = targetPosition.x;
+			currentPosition.z = targetPosition.z;
+			currentPosition.y = 0.0f; // lock to XZ plane
+			return true;
+		}
+
+		// Scale step and move
+		GVECTORF moveStep;
+		GVector::ScaleF(delta, step / dist, moveStep);
+		GVector::AddVectorF(currentPosition, moveStep, currentPosition);
+
+		// Enforce XZ plane constraint
+		currentPosition.y = 0.0f;
 
 		return false;
+	}
+	void RotateContinuous(GAME::Transform& transform, float step, char axis)
+	{
+		using namespace GW::MATH;
+		switch (axis)
+		{
+		case 'X': GMatrix::RotateXLocalF(transform.matrix, step, transform.matrix); break;
+		case 'Y': GMatrix::RotateYLocalF(transform.matrix, step, transform.matrix); break;
+		case 'Z': GMatrix::RotateZLocalF(transform.matrix, step, transform.matrix); break;
+		default: break;
+		}
 	}
 	bool ScaleTowards(GAME::Transform& transform, const GW::MATH::GVECTORF& targetScale, float step)
 	{

@@ -646,32 +646,25 @@ namespace AI
 	{
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 
-		// Only proceed if the boss entity is valid and alive
 		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
 			return;
 
 		auto& hp = registry.get<GAME::Health>(entity);
 		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
 
-		// Only spawn if boss is alive
 		if (hp.health <= 0)
 			return;
 
-		// Decrement spawn timer
-		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		spawn.spawnTimer -= (float)deltaTime;
 
-		// Check for lesser enemies
-		auto lesserEnemies = registry.view<GAME::Enemy>();
-		if (spawn.spawnTimer <= 0.0f && lesserEnemies.empty())
-		{
-			spawn.spawnTimer = 20.0f; // Reset timer
+		const float dt = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
 
-			// Spawn a wave specific to this boss
-			auto& bossTransform = registry.get<GAME::Transform>(entity);
-			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-			SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy4", 10);
-		}
+		if (!registry.any_of<GAME::SpawnEnemies>(entity))
+			registry.emplace_or_replace<GAME::SpawnEnemies>(entity);
+		OrbSpawnBehavior(registry, entity, dt);
+		WaveSpawningBehavior(registry, entity, dt);
+		MineBehavior(registry, entity, dt);
+		FlockSpawnBehavior(registry, entity, dt);
+		KamikazeSpawnBehavior(registry, entity, dt);
 	}
 
 	void Initialize(entt::registry& registry)

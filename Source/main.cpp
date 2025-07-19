@@ -220,6 +220,7 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
 	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });
+	registry.patch<GAME::StateManager>(stateManager);
 
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);

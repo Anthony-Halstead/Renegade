@@ -75,5 +75,13 @@ namespace AI
 	struct Visible {
 		bool enabled = true;
 	};;
+	struct LazerAttack {};
+	struct LazerSweep {
+		GW::MATH::GVECTORF startPos;
+		GW::MATH::GVECTORF endPos;
+		float duration = 0.0f;
+		float elapsedTime = 0.0f;
+		float width;
+	};;
 }
 #endif

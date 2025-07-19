@@ -235,8 +235,31 @@ namespace AI
 
 			// Spawn a wave specific to this boss
 			auto& bossTransform = registry.get<GAME::Transform>(entity);
+			GW::MATH::GVECTORF playerPos;
 			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-			SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
+			// Create starting point for laser attack at the bottom left corner of the screen
+			GW::MATH::GMATRIXF PointA = GW::MATH::GIdentityMatrixF;
+			PointA.row4.x = -100.0f; // X position
+			PointA.row4.y = 0.0f; // Y position
+			PointA.row4.z = -100.0f; // Z position
+			// Create ending point for laser attack at the bottom right corner of the screen
+			GW::MATH::GMATRIXF PointB = GW::MATH::GIdentityMatrixF;
+			PointB.row4.x = 100.0f; // X position
+			PointB.row4.y = 0.0f; // Y position
+			PointB.row4.z = -100.0f; // Z position
+			// Get Player position
+			auto playerView = registry.view<GAME::Player>();
+			if (!playerView.empty())
+			{
+				auto& playerTransform = registry.get<GAME::Transform>(*playerView.begin());
+				playerPos = playerTransform.matrix.row4; // Use player's position as the boss position
+			}
+
+			//SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
+			Damage::EnemyLazerAttack(registry, entity,
+				PointA.row4,
+				PointB.row4,
+				25.0f, 5.0f);
 		}
 	}
 	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity& entity)
@@ -499,8 +522,8 @@ namespace AI
 
 						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
 						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-						SpawnFlock(registry, 20, bossPos);
-						SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
+						//SpawnFlock(registry, 20, bossPos);
+						//SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
 					}
 				}
 			}
@@ -716,6 +739,66 @@ namespace AI
 			{
 				Damage::Explosion(registry, ent);
 				registry.emplace_or_replace<GAME::Destroy>(ent);
+			}
+		}
+	}
+
+	void UpdateLazerAttack(entt::registry& registry, float dt)
+	{
+		auto lazerView = registry.view<AI::LazerAttack, AI::LazerSweep, GAME::Transform>();
+		for (auto lazerEnt : lazerView)
+		{
+			auto& sweep = lazerView.get<AI::LazerSweep>(lazerEnt);
+			auto& transform = lazerView.get<GAME::Transform>(lazerEnt);
+
+			sweep.elapsedTime += dt;
+			float t = sweep.elapsedTime / sweep.duration;
+
+			// Interpolate the start and end points of the lazer
+			GW::MATH::GVECTORF start = sweep.startPos;
+			GW::MATH::GVECTORF end = sweep.endPos;
+
+			GW::MATH::GVECTORF currentStart, currentEnd;
+			GW::MATH::GVector::LerpF(start, end, t, currentStart);
+			currentEnd = end;
+
+			// Direction and length
+			GW::MATH::GVECTORF direction;
+			GW::MATH::GVector::SubtractVectorF(currentEnd, currentStart, direction);
+			float length;
+			GW::MATH::GVector::DotF(direction, direction, length);
+			length = std::sqrt(length);
+
+			// Midpoint
+			GW::MATH::GVECTORF midpoint;
+			GW::MATH::GVector::LerpF(currentStart, currentEnd, 0.5f, midpoint);
+
+			// Build transform
+			GW::MATH::GMATRIXF rotation;
+			UTIL::LookAtMatrix(midpoint, direction, rotation);
+
+			GW::MATH::GMATRIXF scale = GW::MATH::GIdentityMatrixF;
+			scale.row1.x = sweep.width;
+			scale.row2.y = sweep.width;
+			scale.row3.z = length;
+
+			GW::MATH::GMATRIXF finalTransform;
+			GW::MATH::GMatrix::MultiplyMatrixF(rotation, scale, finalTransform);
+			finalTransform.row4 = midpoint;
+			transform.matrix = finalTransform;
+
+			// Destroy when done
+			if (t >= 1.0f)
+			{
+				registry.emplace<GAME::Destroy>(lazerEnt);
+				registry.remove<AI::LazerAttack>(lazerEnt);
+			}
+
+			// If the lazer has reached its end point, destroy it
+			if (t >= 1.0f)
+			{
+				registry.emplace<GAME::Destroy>(lazerEnt);
+				registry.remove<AI::LazerAttack>(lazerEnt);
 			}
 		}
 	}

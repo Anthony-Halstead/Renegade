@@ -220,6 +220,7 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
 	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });
+	registry.patch<GAME::StateManager>(stateManager);
 
 
 	UTIL::CreateDynamicObjects(registry, player, playerModel);
@@ -230,7 +231,9 @@ void GameplayBehavior(entt::registry& registry)
 void MainLoopBehavior(entt::registry& registry)
 {
 	AppState state = AppState::GameLoop;
-	double splashDuration = 10.0;
+	int maxSplashScreens = 3;
+	float splashDuration = 2.f;
+	float fadeDuration = 1.f;
 	auto splashStart = std::chrono::steady_clock::now();
 
 	int closedCount;
@@ -238,6 +241,7 @@ void MainLoopBehavior(entt::registry& registry)
 	auto winView = registry.view<APP::Window>();
 	auto& deltaTime = registry.ctx().emplace<UTIL::DeltaTime>().dtSec;
 
+	registry.emplace<UI::SplashScreen>(registry.view<UI::UIManager>().front(), UI::SplashScreen{maxSplashScreens, splashDuration, fadeDuration});
 	registry.emplace<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
 	do {

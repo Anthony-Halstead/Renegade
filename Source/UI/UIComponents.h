@@ -27,6 +27,33 @@ namespace UI
 	{
 		bool pauseContinue = 1;
 	};
+
+	struct SplashScreen
+	{
+		int maxSplashScreens;
+		float splashTime;
+		float fadeDuration;
+		int splash = 0;
+		bool fadingIn = true;
+		bool fadingOut = false;
+		float splashDuration = 0.f;
+		float fadeAlpha = 0.f;
+	};
+
+	struct Point2D
+	{
+		int x;
+		int y;
+	};
+
+	struct Rect
+	{
+		int x;
+		int y;
+		unsigned width;
+		unsigned height;
+	};
+
 }
 
 #endif 

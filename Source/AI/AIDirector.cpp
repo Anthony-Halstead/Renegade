@@ -156,14 +156,15 @@ namespace AI
 		ComputeFlockAverages(registry, avgPos, avgFwd);
 
 		for (auto e : view) {
-			auto& T = registry.get<GAME::Transform>(e).matrix;
+			auto& T = registry.get<GAME::Transform>(e);
+			auto& M = T.matrix;
 			auto& V = registry.get<GAME::Velocity>(e);
 			auto& stats = registry.get<BoidStats>(e);
 
 			auto align = CalculateAlignment(avgFwd, stats, stats.alignmentStrength);
-			auto coh = CalculateCohesion(avgPos, T.row4, stats.flockRadius, stats.cohesionStrength);
+			auto coh = CalculateCohesion(avgPos, M.row4, stats.flockRadius, stats.cohesionStrength);
 			auto sep = CalculateSeparation(registry, e, stats.safeRadius, stats.separationStrength);
-			auto seek = CalculateSeek(T.row4, goal.pos, stats.maxSpeed, stats.seekStrength);
+			auto seek = CalculateSeek(M.row4, goal.pos, stats.maxSpeed, stats.seekStrength);
 			GW::MATH::GVECTORF steer = seek;
 			steer.x += align.x + coh.x + sep.x;
 			steer.y += align.y + coh.y + sep.y;
@@ -210,87 +211,424 @@ namespace AI
 		return kinds[dist(rng)];
 	}
 
-	void UpdateBossOneBehavior(entt::registry& registry, entt::entity& entity)
+	void ArcBullets(
+		entt::registry& registry,
+		entt::entity entity,
+		const GW::MATH::GMATRIXF& matrix, int bulletCount, float arcAngleRad, float baseAngleRad, float offsetDist
+	)
 	{
-		// Only proceed if the boss entity is valid and alive
-		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
+		using namespace GW::MATH;
+		const GVECTORF bossPos = matrix.row4;
+		const auto& cfg = *registry.ctx().get<UTIL::Config>().gameConfig;
+		const float speed = cfg.at("EnemyBullet").at("speed").as<float>();
+		const std::string model = cfg.at("EnemyBullet").at("model").as<std::string>();
+		float centerAngle = -G_PI_F / 2.0f;
+
+		float startAngle = centerAngle - (arcAngleRad / 2.0f) + baseAngleRad;
+		for (int i = 0; i < bulletCount; ++i) {
+			float t = float(i) / float(bulletCount - 1);
+			float angle = startAngle + t * arcAngleRad;
+
+			GVECTORF dir = { std::cos(angle), 0.0f, std::sin(angle), 0.0f };
+
+			GVECTORF spawnPos = bossPos;
+			spawnPos.x += dir.x * offsetDist;
+			spawnPos.z += dir.z * offsetDist;
+
+			entt::entity b = registry.create();
+			UTIL::CreateVelocity(registry, b, dir, speed);
+			registry.emplace<GAME::BulletOwner>(b, entity);
+			GMATRIXF bulletMatrix = matrix;
+			bulletMatrix.row4 = spawnPos;
+			UTIL::CreateTransform(registry, b, bulletMatrix);
+			UTIL::CreateDynamicObjects(registry, b, model);
+			registry.emplace<GAME::Bullet>(b);
+		}
+	}
+
+	void ArcAttackBehavior(entt::registry& registry, entt::entity entity, AI::BossFanAttack& fan, float deltaTime)
+	{
+		if (fan.atMaxSpin) {
+			fan.arcTimer -= deltaTime;
+			if (fan.arcTimer <= 0.0f && fan.arcsFired < fan.arcsPerAttack) {
+				float offset = 0.0f;
+				if (fan.alternateArcOffsets) {
+					if (fan.arcsFired % 2 == 1)
+						offset = (fan.arcsFired % 4 == 1) ? -fan.arcOffsetAmount : +fan.arcOffsetAmount;
+				}
+				ArcBullets(
+					registry,
+					entity,
+					registry.get<GAME::Transform>(entity).matrix,
+					fan.bulletCount,
+					fan.arcAngleRad,
+					offset,
+					fan.bulletOffsetDist
+				);
+				fan.arcTimer = fan.arcInterval;
+				fan.arcsFired++;
+			}
+		}
+	}
+	void WaveSpawningBehavior(entt::registry& registry, entt::entity entity, float deltaTime)
+	{
+		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
+		spawn.spawnTimer -= deltaTime;
+
+		auto lesserEnemies = registry.view<GAME::Enemy>();
+		if (spawn.spawnTimer <= 0.0f)
+		{
+			spawn.spawnTimer = 20.0f;
+			auto& bossTransform = registry.get<GAME::Transform>(entity);
+			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+			SpawnWave(registry, AI::RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy2", 10);
+		}
+	}
+	void MineBehavior(entt::registry& R, entt::entity boss, float dt)
+	{
+		if (!R.any_of<MineDroneVolleyCooldown>(boss))
+			R.emplace<MineDroneVolleyCooldown>(boss);
+		auto& cd = R.get<MineDroneVolleyCooldown>(boss);
+
+		cd.timer -= dt;
+		if (cd.timer > 0.f) return;
+
+		cd.timer = cd.cooldown;
+
+		const auto& cfg = *R.ctx().get<UTIL::Config>().gameConfig;
+		const int  count = cfg.at("MineDrone").at("count").as<int>();
+
+		const auto& bossT = R.get<GAME::Transform>(boss).matrix;
+		for (int i = 0; i < count; ++i)
+			SpawnMineDrone(R, bossT.row4);
+	}
+	void SpinningDronesBehavior(entt::registry& registry, entt::entity entity, float deltaTime)
+	{
+		auto dronesView = registry.view<AI::SpinningDrone>();
+
+		if (dronesView.empty()) {
+			const auto& cfg = *registry.ctx().get<UTIL::Config>().gameConfig;
+			int droneCount = cfg.at("SpinningDrone").at("droneCount").as<int>();
+
+			const auto& bossTransform = registry.get<GAME::Transform>(entity);
+			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
+
+			for (int i = 0; i < droneCount; ++i) {
+				SpawnSpinningDrone(registry, bossPos);
+			}
+		}
+	}
+	void KamikazeSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
+	{
+		if (!R.any_of<SpawnKamikazeEnemy, GAME::Health>(boss))
 			return;
 
-		auto& hp = registry.get<GAME::Health>(entity);
-		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
+		auto& hpComp = R.get<GAME::Health>(boss);
+		if (hpComp.health > 2)
+			return;
 
-		// Only spawn if boss is alive
+		auto& spawnK = R.get<SpawnKamikazeEnemy>(boss);
+		spawnK.spawnTimer -= dt;
+		if (spawnK.spawnTimer > 0.f)
+			return;
+
+		spawnK.spawnTimer = 3.0f;
+
+		const GW::MATH::GVECTORF bossPos = R.get<GAME::Transform>(boss).matrix.row4;
+		SpawnKamikaze(R, bossPos);
+	}
+	void FlockSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
+	{
+
+		if (!R.any_of<FlockSpawnCooldown>(boss))
+			R.emplace_or_replace<FlockSpawnCooldown>(boss);
+
+		auto& flockCD = R.get<FlockSpawnCooldown>(boss);
+
+		if (flockCD.pendingFirstImmediate) {
+			flockCD.pendingFirstImmediate = false;
+			flockCD.timer = flockCD.cooldown;
+			const auto& bossPos = R.get<GAME::Transform>(boss).matrix.row4;
+			SpawnFlock(R, 20, bossPos);
+			return;
+		}
+
+		flockCD.timer -= dt;
+		if (flockCD.timer > 0.f)
+			return;
+
+		flockCD.timer = flockCD.cooldown;
+
+		const GW::MATH::GVECTORF bossPos = R.get<GAME::Transform>(boss).matrix.row4;
+		SpawnFlock(R, 20, bossPos);
+	}
+	void UpdateMineDrones(entt::registry& R)
+	{
+		entt::basic_view players = R.view<GAME::Player, GAME::Transform>();
+		if (players.begin() == players.end())return;
+		auto& playerTransform = R.get<GAME::Transform>(*players.begin());
+		GW::MATH::GVECTORF playerPos = playerTransform.matrix.row4;
+
+		const float dt = static_cast<float>(R.ctx().get<UTIL::DeltaTime>().dtSec);
+		const auto  cfg = *R.ctx().get<UTIL::Config>().gameConfig;
+
+		auto view = R.view<GAME::Health, MineDrone, MineDroneSettings, GAME::Transform, GAME::Velocity>();
+		for (auto e : view)
+		{
+			auto& d = view.get<MineDrone>(e);
+			auto& set = view.get<MineDroneSettings>(e);
+			auto& T = view.get<GAME::Transform>(e);
+			auto& V = view.get<GAME::Velocity>(e);
+			auto& hp = view.get<GAME::Health>(e);
+
+			if (!d.reachedTarget)
+			{
+				const float maxSpd = cfg.at("MineDrone").at("speed").as<float>();
+				d.reachedTarget = UTIL::SteerTowards(V, T.matrix.row4, d.targetPos, maxSpd);
+				if (d.reachedTarget)
+					d.timer = set.detonationDelay;
+			}
+			else
+			{
+				d.timer -= dt;
+				if (hp.health <= 0)
+				{
+					Damage::Explosion(R, e);
+					R.emplace_or_replace<GAME::Destroy>(e);
+					R.remove<GAME::Enemy>(e);
+					continue;
+				}
+
+
+				if (d.timer <= 0.f)
+				{
+					Damage::Explosion(R, e);
+					R.emplace_or_replace<GAME::Destroy>(e);
+				}
+			}
+		}
+	}
+	void UpdateSpinningDrones(entt::registry& registry) {
+		auto view = registry.view<AI::SpinningDrone, AI::SpinningDroneSettings, GAME::Transform, GAME::Velocity>();
+		float deltaTime = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
+		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
+		for (auto drone : view) {
+			auto& droneData = view.get<AI::SpinningDrone>(drone);
+			auto& droneSettings = view.get<AI::SpinningDroneSettings>(drone);
+			auto& transform = view.get<GAME::Transform>(drone);
+			auto& velocity = view.get<GAME::Velocity>(drone);
+
+			if (!droneData.reachedTarget)
+			{
+				const float maxSpd = (*config).at("SpinningDrone").at("speed").as<float>();
+				droneData.reachedTarget = UTIL::SteerTowards(velocity, transform.matrix.row4, droneData.targetPosition, maxSpd);
+			}
+			else {
+				UTIL::RotateContinuous(transform, droneSettings.spinSpeed * deltaTime, 'Y');
+
+				droneData.bulletFireTimer -= deltaTime;
+				if (droneData.bulletFireTimer <= 0.0f) {
+					droneData.bulletFireTimer = droneSettings.bulletFireInterval;
+
+					const float bulletSpeed = (*config).at("EnemyBullet").at("speed").as<float>();
+					const std::string bulletModel = (*config).at("EnemyBullet").at("model").as<std::string>();
+
+					GW::MATH::GVECTORF fwd = transform.matrix.row3;
+					fwd.y = 0;
+					GW::MATH::GVector::NormalizeF(fwd, fwd);
+
+					constexpr float muzzleOffset = 1.0f;
+					GW::MATH::GVECTORF spawnPos = transform.matrix.row4;
+					spawnPos.x += fwd.x * muzzleOffset;
+					spawnPos.z += fwd.z * muzzleOffset;
+
+					entt::entity bullet = registry.create();
+					registry.emplace<GAME::BulletOwner>(bullet, drone);
+
+					GAME::Transform bulletT{ GW::MATH::GIdentityMatrixF };
+					bulletT.matrix.row4 = spawnPos;
+					registry.emplace<GAME::Transform>(bullet, bulletT);
+
+					GW::MATH::GVECTORF vel = { fwd.x * bulletSpeed, 0, fwd.z * bulletSpeed, 0 };
+					registry.emplace<GAME::Velocity>(bullet, GAME::Velocity{ vel });
+
+					UTIL::CreateDynamicObjects(registry, bullet, bulletModel);
+					registry.emplace<GAME::Bullet>(bullet);
+
+				}
+			}
+		}
+	}
+	void UpdateBossOneBehavior(entt::registry& R, entt::entity boss)
+	{
+		if (!R.valid(boss) || !R.all_of<GAME::Health, GAME::SpawnEnemies>(boss))
+			return;
+
+		auto& hp = R.get<GAME::Health>(boss);
 		if (hp.health <= 0)
 			return;
 
-		// Decrement spawn timer
-		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		spawn.spawnTimer -= (float)deltaTime;
+		const float dt = static_cast<float>(R.ctx().get<UTIL::DeltaTime>().dtSec);
 
-		// Check for lesser enemies
-		auto lesserEnemies = registry.view<GAME::Enemy>();
-		if (spawn.spawnTimer <= 0.0f && lesserEnemies.empty())
+		if (!R.any_of<GAME::SpawnEnemies>(boss))
+			R.emplace_or_replace<GAME::SpawnEnemies>(boss);
+
+		WaveSpawningBehavior(R, boss, dt);
+
+		MineBehavior(R, boss, dt);
+
+		KamikazeSpawnBehavior(R, boss, dt);
+	}
+	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity entity)
+	{
+		if (!registry.valid(entity) ||
+			!registry.all_of<GAME::Health, /*GAME::SpawnEnemies,*/ GAME::Transform>(entity))
+			return;
+
+		auto& hp = registry.get<GAME::Health>(entity);
+		if (hp.health <= 0)
+			return;
+
+		if (!registry.any_of<AI::BossTwoStates>(entity))
+			registry.emplace<AI::BossTwoStates>(entity);
+		auto& bossState = registry.get<AI::BossTwoStates>(entity);
+
+		bool newFan = false;
+		if (!registry.any_of<AI::BossFanAttack>(entity)) {
+			registry.emplace<AI::BossFanAttack>(entity);
+			newFan = true;
+		}
+		auto& fan = registry.get<AI::BossFanAttack>(entity);
+
+		if (!registry.any_of<AI::SpinningDronesCooldown>(entity))
+			registry.emplace<AI::SpinningDronesCooldown>(entity,
+				AI::SpinningDronesCooldown{ 15.f, 15.f });
+		auto& droneCooldown = registry.get<AI::SpinningDronesCooldown>(entity);
+
+		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
+
+		const float dt = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
+
+		if (newFan || fan.attackTimer <= 0.f)
+			fan.attackTimer = fan.attackCooldown;
+
+		FlockSpawnBehavior(registry, entity, dt);
+
+		if (bossState.state != AI::BossState::SpinningDrones) {
+			droneCooldown.timer -= dt;
+			if (droneCooldown.timer <= 0.f) {
+				bossState.state = AI::BossState::SpinningDrones;
+			}
+		}
+
+		static constexpr float MIN_WAVE_DWELL = 0.25f;
+		static float waveDwellTimer = 0.f;
+
+		switch (bossState.state)
 		{
-			spawn.spawnTimer = 20.0f; // Reset timer
+		case AI::BossState::WaveSpawning:
+		{
+			float preTimer = spawn.spawnTimer;
 
-			// Spawn a wave specific to this boss
-			auto& bossTransform = registry.get<GAME::Transform>(entity);
-			GW::MATH::GVECTORF playerPos;
-			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-			// Create starting point for laser attack at the bottom left corner of the screen
-			GW::MATH::GMATRIXF PointA = GW::MATH::GIdentityMatrixF;
-			PointA.row4.x = -100.0f; // X position
-			PointA.row4.y = 0.0f; // Y position
-			PointA.row4.z = -100.0f; // Z position
-			// Create ending point for laser attack at the bottom right corner of the screen
-			GW::MATH::GMATRIXF PointB = GW::MATH::GIdentityMatrixF;
-			PointB.row4.x = 100.0f; // X position
-			PointB.row4.y = 0.0f; // Y position
-			PointB.row4.z = -100.0f; // Z position
-			// Get Player position
-			auto playerView = registry.view<GAME::Player>();
-			if (!playerView.empty())
+			//	WaveSpawningBehavior(registry, entity, dt); // UNCOMMENT ONCE TESTING IS DONE
+				//---------Section TO REMOVE AFTER TESTING
+			spawn.spawnTimer -= dt;
+			if (spawn.spawnTimer <= 0.0f)
 			{
-				auto& playerTransform = registry.get<GAME::Transform>(*playerView.begin());
-				playerPos = playerTransform.matrix.row4; // Use player's position as the boss position
+				spawn.spawnTimer = 20.0f;
+			}
+			//---------Section TO REMOVE AFTER TESTING
+			// Detect a wave spawn event (timer wrapped/reset)
+			bool waveJustSpawned = (preTimer > 0.f && spawn.spawnTimer > preTimer);
+
+			if (waveJustSpawned) {
+				waveDwellTimer = 0.f;
+			}
+			else {
+				waveDwellTimer += dt;
 			}
 
-			//SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
-			Damage::EnemyLazerAttack(registry, entity,
-				PointA.row4,
-				PointB.row4,
-				25.0f, 5.0f);
+			if (fan.spinSpeed > fan.idleSpinSpeed) {
+				fan.spinSpeed -= fan.spinUpRate * dt;
+				if (fan.spinSpeed < fan.idleSpinSpeed)
+					fan.spinSpeed = fan.idleSpinSpeed;
+			}
+			else if (fan.spinSpeed < fan.idleSpinSpeed) {
+				fan.spinSpeed += fan.spinUpRate * dt;
+				if (fan.spinSpeed > fan.idleSpinSpeed)
+					fan.spinSpeed = fan.idleSpinSpeed;
+			}
+
+			if (waveJustSpawned || waveDwellTimer >= MIN_WAVE_DWELL) {
+				if (fan.attackTimer > 0.f)
+					fan.attackTimer -= dt;
+			}
+
+			if (fan.attackTimer <= 0.f) {
+				bossState.state = AI::BossState::ArcAttack;
+				fan.arcTimer = 0.f;
+				fan.arcsFired = 0;
+				fan.spinningUp = true;
+				fan.spinningDown = false;
+				fan.atMaxSpin = false;
+			}
+			break;
 		}
-	}
-	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity& entity)
-	{
-		// Only proceed if the boss entity is valid and alive
-		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
-			return;
 
-		auto& hp = registry.get<GAME::Health>(entity);
-		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
-
-		// Only spawn if boss is alive
-		if (hp.health <= 0)
-			return;
-
-		// Decrement spawn timer
-		double deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
-		spawn.spawnTimer -= (float)deltaTime;
-
-		// Check for lesser enemies
-		auto lesserEnemies = registry.view<GAME::Enemy>();
-		if (spawn.spawnTimer <= 0.0f && lesserEnemies.empty())
+		case AI::BossState::ArcAttack:
 		{
-			spawn.spawnTimer = 20.0f; // Reset timer
-
-			// Spawn a wave specific to this boss
-			auto& bossTransform = registry.get<GAME::Transform>(entity);
-			GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-			SpawnWave(registry, RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy2", 10);
+			if (fan.spinningUp) {
+				fan.spinSpeed += fan.spinUpRate * dt;
+				if (fan.spinSpeed >= fan.maxSpinSpeed) {
+					fan.spinSpeed = fan.maxSpinSpeed;
+					fan.spinningUp = false;
+					fan.atMaxSpin = true;
+				}
+			}
+			else if (fan.atMaxSpin) {
+				if (fan.arcsFired >= fan.arcsPerAttack) {
+					fan.atMaxSpin = false;
+					fan.spinningDown = true;
+				}
+			}
+			else if (fan.spinningDown) {
+				fan.spinSpeed -= fan.spinUpRate * dt;
+				if (fan.spinSpeed <= fan.idleSpinSpeed) {
+					fan.spinSpeed = fan.idleSpinSpeed;
+					fan.spinningDown = false;
+					bossState.state = AI::BossState::WaveSpawning;
+					fan.attackTimer = fan.attackCooldown;
+					fan.arcTimer = 0.f;
+					fan.arcsFired = 0;
+					fan.currentFanAngle = 0.f;
+				}
+			}
+			break;
 		}
+
+		case AI::BossState::SpinningDrones:
+		{
+			SpinningDronesBehavior(registry, entity, dt);
+			droneCooldown.timer = droneCooldown.cooldown;
+
+			if (fan.attackTimer <= 0.f)
+				fan.attackTimer = fan.attackCooldown;
+
+			bossState.state = AI::BossState::WaveSpawning;
+			break;
+		}
+
+		default:
+			break;
+		}
+
+		auto& bossTransform = registry.get<GAME::Transform>(entity);
+		UTIL::RotateContinuous(bossTransform, dt * fan.spinSpeed, 'Y');
+
+		if (bossState.state == AI::BossState::ArcAttack)
+			ArcAttackBehavior(registry, entity, fan, dt);
 	}
+
 	void UpdateBossThreeBehavior(entt::registry& registry, entt::entity& entity)
 	{
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
@@ -505,28 +843,6 @@ namespace AI
 
 		for (auto ent : activeGame)
 		{
-			if (registry.all_of<GAME::SpawnEnemies>(bossEntity))
-			{
-				auto& spawn = registry.get<GAME::SpawnEnemies>(bossEntity);
-				spawn.spawnTimer -= (float)deltaTime;
-
-				if (spawn.spawnTimer <= 0.0f)
-				{
-					spawn.spawnTimer = 10.0f;
-
-					entt::basic_view currentEnemies = registry.view<GAME::Enemy>();
-
-					if (bossHealth && currentEnemies.empty())
-					{
-						unsigned int maxEnemies = (*config).at("Enemy1").at("maxEnemies").as<unsigned int>();
-
-						auto& bossTransform = registry.get<GAME::Transform>(bossEntity);
-						GW::MATH::GVECTORF bossPos = bossTransform.matrix.row4;
-						//SpawnFlock(registry, 20, bossPos);
-						//SpawnWave(registry, RandomFormationType(), maxEnemies, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy1", 10);
-					}
-				}
-			}
 
 			// Enemy fly off screen
 			const float flyOffDelay = (*config).at("Enemy1").at("flyOffTimer").as<float>();
@@ -567,18 +883,6 @@ namespace AI
 			if (registry.all_of<GAME::Health>(bossEntity))
 			{
 				auto& hp = registry.get<GAME::Health>(bossEntity);
-				auto& spawnKamikaze = registry.get<AI::SpawnKamikazeEnemy>(bossEntity).spawnTimer;
-
-				if (hp.health <= 2)
-				{
-					spawnKamikaze -= (float)deltaTime;
-					if (spawnKamikaze <= 0.0f)
-					{
-						spawnKamikaze = 10.0f;
-						SpawnKamikaze(registry, registry.get<GAME::Transform>(bossEntity).matrix.row4);
-					}
-				}
-
 				if (hp.health <= 0)
 				{
 					registry.emplace<GAME::Destroy>(bossEntity);
@@ -597,7 +901,7 @@ namespace AI
 		const float speed = cfg.at("EnemyBullet").at("speed").as<float>();
 		const std::string model = cfg.at("EnemyBullet").at("model").as<std::string>();
 
-		auto v = R.view<GAME::Enemy, GAME::Velocity, GAME::Transform>();
+		auto v = R.view<GAME::Enemy, GAME::Velocity, GAME::Transform, FormationMember>();
 
 		for (auto e : v)
 		{
@@ -696,7 +1000,6 @@ namespace AI
 
 	void UpdateKamikazeEnemy(entt::registry& registry)
 	{
-		// Move towards player and explode on contact
 
 		entt::basic_view players = registry.view<GAME::Player, GAME::Transform>();
 		entt::basic_view kamikazeEnemies = registry.view<AI::Kamikaze>();
@@ -743,72 +1046,6 @@ namespace AI
 		}
 	}
 
-	void UpdateLazerAttack(entt::registry& registry, float dt)
-	{
-		auto lazerView = registry.view<AI::LazerAttack, AI::LazerSweep, GAME::Transform>();
-		for (auto lazerEnt : lazerView)
-		{
-			auto& sweep = lazerView.get<AI::LazerSweep>(lazerEnt);
-			auto& transform = lazerView.get<GAME::Transform>(lazerEnt);
-
-			sweep.elapsedTime += dt;
-			float t = sweep.elapsedTime / sweep.duration;
-
-			// Interpolate the start and end points of the lazer
-			GW::MATH::GVECTORF start = sweep.startPos;
-			GW::MATH::GVECTORF end = sweep.endPos;
-
-			GW::MATH::GVECTORF currentStart, currentEnd;
-			GW::MATH::GVector::LerpF(start, end, t, currentStart);
-			currentEnd = end;
-
-			// Direction and length
-			GW::MATH::GVECTORF direction;
-			GW::MATH::GVector::SubtractVectorF(currentEnd, currentStart, direction);
-			float length;
-			GW::MATH::GVector::DotF(direction, direction, length);
-			length = std::sqrt(length);
-
-			// Midpoint
-			GW::MATH::GVECTORF midpoint;
-			GW::MATH::GVector::LerpF(currentStart, currentEnd, 0.5f, midpoint);
-
-			// Build transform
-			GW::MATH::GMATRIXF rotation;
-			UTIL::LookAtMatrix(midpoint, direction, rotation);
-
-			GW::MATH::GMATRIXF scale = GW::MATH::GIdentityMatrixF;
-			scale.row1.x = sweep.width;
-			scale.row2.y = sweep.width;
-			scale.row3.z = length;
-
-			GW::MATH::GMATRIXF finalTransform;
-			GW::MATH::GMatrix::MultiplyMatrixF(rotation, scale, finalTransform);
-			finalTransform.row4 = midpoint;
-			transform.matrix = finalTransform;
-
-			// Destroy when done
-			if (t >= 1.0f)
-			{
-				registry.emplace<GAME::Destroy>(lazerEnt);
-				registry.remove<AI::LazerAttack>(lazerEnt);
-			}
-
-			// If the lazer has reached its end point, destroy it
-			if (t >= 1.0f)
-			{
-				registry.emplace<GAME::Destroy>(lazerEnt);
-				registry.remove<AI::LazerAttack>(lazerEnt);
-			}
-		}
-	}
-
-	void UpdateAIDestroy(entt::registry& registry)
-	{
-		entt::basic_view destroy = registry.view<GAME::Destroy>();
-		for (auto ent : destroy) registry.destroy(ent);
-	}
-
 	void UpdateBossSpawn(entt::registry& registry, entt::entity entity, unsigned int& bossWaveCount)
 	{
 		// Check if boss and enemy views are empty
@@ -844,7 +1081,6 @@ namespace AI
 
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
-			UpdateAIDestroy(registry);
 			UpdateEnemies(registry, entity);
 			UpdateKamikazeEnemy(registry);
 			UpdateExplosions(registry);
@@ -852,6 +1088,8 @@ namespace AI
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);
 			UpdateBossSpawn(registry, entity, bossWaveCount);
+			UpdateMineDrones(registry);
+			UpdateSpinningDrones(registry);
 			UpdateFormation(registry);
 			UpdateLocomotion(registry);
 			UpdateStandardProjectile(registry);

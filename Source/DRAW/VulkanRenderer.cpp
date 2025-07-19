@@ -758,34 +758,44 @@ namespace DRAW
 	// run this code when a VulkanRenderer component is updated
 	void Destroy_VulkanRenderer(entt::registry& registry, entt::entity entity)
 	{
+		registry.remove<UI::UIManager>(registry.view<UI::UIManager>().front());
+		
 		auto& vulkanRenderer = registry.get<VulkanRenderer>(entity);
+
 		vkDeviceWaitIdle(vulkanRenderer.device);
 
 		auto destroyTextureVec = [&](std::vector<TextureData>& vec) {
+			if (vec.empty())return;
 			for (auto& t : vec) {
+
+				if (t.buffer != VK_NULL_HANDLE)
+					vkDestroyBuffer(vulkanRenderer.device, t.buffer, nullptr);
 				if (t.imageView != VK_NULL_HANDLE)
 					vkDestroyImageView(vulkanRenderer.device, t.imageView, nullptr);
 				if (t.image != VK_NULL_HANDLE)
 					vkDestroyImage(vulkanRenderer.device, t.image, nullptr);
 				if (t.memory != VK_NULL_HANDLE)
 					vkFreeMemory(vulkanRenderer.device, t.memory, nullptr);
+
 			}
 			vec.clear();
 			};
+
 		destroyTextureVec(vulkanRenderer.textures);
 		destroyTextureVec(vulkanRenderer.texturesNormal);
 		destroyTextureVec(vulkanRenderer.texturesEmissive);
 		destroyTextureVec(vulkanRenderer.texturesAlpha);
 		destroyTextureVec(vulkanRenderer.texturesSpecular);
+		registry.remove<VulkanIndexBuffer>(entity);
+		registry.remove<VulkanVertexBuffer>(entity);
+		registry.remove<VulkanGPUInstanceBuffer>(entity);
+		registry.remove<VulkanUniformBuffer>(entity);
 		if (vulkanRenderer.textureSetLayout)
 			vkDestroyDescriptorSetLayout(vulkanRenderer.device, vulkanRenderer.textureSetLayout, nullptr);
 
 		if (vulkanRenderer.textureSampler)
 			vkDestroySampler(vulkanRenderer.device, vulkanRenderer.textureSampler, nullptr);
-		registry.remove<VulkanIndexBuffer>(entity);
-		registry.remove<VulkanVertexBuffer>(entity);
-		registry.remove<VulkanGPUInstanceBuffer>(entity);
-		registry.remove<VulkanUniformBuffer>(entity);
+
 
 		vkDestroyDescriptorSetLayout(vulkanRenderer.device, vulkanRenderer.descriptorLayout, nullptr);
 		vkDestroyDescriptorPool(vulkanRenderer.device, vulkanRenderer.descriptorPool, nullptr);
@@ -794,8 +804,6 @@ namespace DRAW
 		vkDestroyShaderModule(vulkanRenderer.device, vulkanRenderer.fragmentShader, nullptr);
 		vkDestroyPipelineLayout(vulkanRenderer.device, vulkanRenderer.pipelineLayout, nullptr);
 		vkDestroyPipeline(vulkanRenderer.device, vulkanRenderer.pipeline, nullptr);
-
-		registry.remove<UI::UIManager>(registry.view<UI::UIManager>().front());
 	}
 
 	// Use this MACRO to connect the EnTT Component Logic

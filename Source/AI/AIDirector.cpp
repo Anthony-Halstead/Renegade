@@ -1079,6 +1079,21 @@ namespace AI
 		}
 	}
 
+	void UpdateLazerAttack(entt::registry& registry)
+	{
+		// Laser will fire from origin point on boss to either PointA or PointB,
+		// the laser model will be stretched between the origin and one of the two points
+		// Then the laser will move from PointA to PointB or vice versa depending on which point it first started
+
+		// The laser will need to have it's position updated over time to ensure the starting point of the laser doesn't
+		// change while moving the end point from PointA to PointB. Upon reaching the other point, 
+		// the laser will destroy itself
+		// The player will take damage for coming into contact with the laser
+
+		// Use MoveTowards to get the laser to move from PointA to PointB
+		// Or use SteerTowards to get the laser to move from PointA to PointB
+	}
+
 	void UpdateBossSpawn(entt::registry& registry, entt::entity entity, unsigned int& bossWaveCount)
 	{
 		// Check if boss and enemy views are empty

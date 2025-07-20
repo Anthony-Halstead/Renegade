@@ -1081,8 +1081,8 @@ namespace AI
 
 	void UpdateLazerAttack(entt::registry& registry)
 	{
-		// Laser will fire from origin point on boss to either PointA or PointB,
-		// the laser model will be stretched between the origin and one of the two points
+		// Laser will fire from spawn point on boss to either PointA or PointB,
+		// the laser model will be stretched between the spawn point and one of the two points
 		// Then the laser will move from PointA to PointB or vice versa depending on which point it first started
 
 		// The laser will need to have it's position updated over time to ensure the starting point of the laser doesn't
@@ -1092,6 +1092,44 @@ namespace AI
 
 		// Use MoveTowards to get the laser to move from PointA to PointB
 		// Or use SteerTowards to get the laser to move from PointA to PointB
+
+		entt::basic_view lazerView = registry.view<AI::LazerAttack, AI::LazerSweep, GAME::Transform>();
+
+		if (lazerView.begin() == lazerView.end()) return;
+
+		for (auto entity : lazerView)
+		{
+			auto& lazerTransform = lazerView.get<GAME::Transform>(entity);
+			auto& lazerSweep = lazerView.get<AI::LazerSweep>(entity);
+
+			static bool initialized = false;
+			if (!initialized)
+			{
+				UTIL::StretchModel(registry, lazerTransform, lazerSweep.pointA, lazerSweep.pointB, { 1.0f, 1.0f, 1.0f, 0.0f }, 'X');
+				initialized = true;
+			}
+
+			// Move laser across screen
+			const float totalDuration = lazerSweep.duration;
+			static float elapsedTime = 0.0f;
+			elapsedTime += static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
+
+			// Interpolate position between A and B
+			float t = elapsedTime / totalDuration;
+			if (t > 1.0f) t = 1.0f; // Clamp to 1.0f
+			GW::MATH::GVECTORF newPos;
+			GW::MATH::GVector::LerpF(lazerSweep.pointA, lazerSweep.pointB, t, newPos);
+
+			UTIL::MoveTowards(lazerTransform, newPos, static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec) * (1.0f / totalDuration));
+
+			// Check if laser has reached the end point
+			if (UTIL::Distance(lazerTransform.matrix.row4, lazerSweep.pointB) < 0.1f)
+			{
+				// Laser has reached PointB, destroy it
+				registry.emplace_or_replace<GAME::Destroy>(entity);
+				initialized = false; // Reset for next laser
+			}
+		}
 	}
 
 	void UpdateBossSpawn(entt::registry& registry, entt::entity entity, unsigned int& bossWaveCount)

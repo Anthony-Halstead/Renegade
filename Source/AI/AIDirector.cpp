@@ -678,8 +678,7 @@ namespace AI
 			FormationMember,
 			MoveTarget,
 			GAME::Transform,
-			GAME::Velocity
-		>(entt::exclude<AI::FlyOffScreen, AI::ReturningToPosition>);
+			GAME::Velocity>(entt::exclude<AI::FlyOffScreen, AI::ReturningToPosition>);
 
 		const float rotSpeedDeg = 90.f;
 		const float rotStepRad = G_DEGREE_TO_RADIAN_F(rotSpeedDeg) * r.ctx().get<UTIL::DeltaTime>().dtSec;

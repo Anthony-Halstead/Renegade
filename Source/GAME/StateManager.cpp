@@ -6,6 +6,8 @@
 #include "../UI/UIComponents.h"
 #include "../CCL.h"
 
+#define UUID "ab417dfa-142f-41af-a81a-dc91a1fcc8b5"
+
 namespace GAME
 {
 	// Helper functions
@@ -13,9 +15,8 @@ namespace GAME
 	void GetHighScores(entt::registry& registry) 
 	{
 		PastScores scoreBoard;
-		std::string uuid = "ab417dfa-142f-41af-a81a-dc91a1fcc8b5";
 
-		SB::Client sbClient(uuid);
+		SB::Client sbClient(UUID);
 
 		if (!sbClient.GetScores(scoreBoard.scores)) 
 		{
@@ -64,7 +65,7 @@ namespace GAME
 	{
 		entt::basic_view stateManager = registry.view<StateManager>();
 		if (stateManager.empty()) return;
-		SB::Client sbClient("ab417dfa-142f-41af-a81a-dc91a1fcc8b5");
+		SB::Client sbClient(UUID);
 		if (registry.any_of<Score>(stateManager.front()))
 		{
 			auto& scoreComponent = registry.get<Score>(stateManager.front());
@@ -187,9 +188,18 @@ namespace GAME
 		entt::basic_view enemies = registry.view<Enemy, Health>();
 		for (auto ent : enemies)
 		{
-			if (registry.get<Health>(ent).health <= 0) {
-				// communicate to UI or other systems that enemy has been defeated
-				ScoreEvent(registry, "Enemy1", "score");
+			if (registry.get<Health>(ent).health <= 0) 
+			{
+				if (registry.any_of<EnemyTitle>(ent))
+				{
+					std::string enemyName = registry.get<EnemyTitle>(ent).name; // Assuming EnemyTitle component exists
+					ScoreEvent(registry, enemyName, "score");
+				}
+				else {
+					/// Debug
+					std::cout << "Enemy defeated, but no name was provided, no score awarded " << std::endl;
+					///
+				}
 			}
 		}
 	}

@@ -72,6 +72,10 @@ namespace GAME
 		std::string name;
 	};
 
+	struct EnemyTitle {
+		std::string name;
+	};
+
 	struct PastScores {
 		int scores[10];
 	};

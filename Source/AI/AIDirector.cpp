@@ -967,7 +967,7 @@ namespace AI
 
 			if (reached)
 			{
-				registry.emplace<GAME::Destroy>(ex);
+				registry.emplace_or_replace<GAME::Destroy>(ex);
 			}
 		}
 	}

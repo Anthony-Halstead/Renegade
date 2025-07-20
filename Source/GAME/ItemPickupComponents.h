@@ -14,9 +14,9 @@ namespace GAME {
     };
 
     /* ---------------- ECS components ---------------- */
-    struct PickupManager { ItemDropConfig itemDropConfig; };          // 1× in scene
-    struct ItemPickup { PickupType type; };                        // on every drop
-    struct PickupVelocity { float zPerSecond; };                       // fall speed
+    struct PickupManager { ItemDropConfig itemDropConfig; };            // 1× in scene
+    struct ItemPickup { PickupType type; };                             // on every drop
+    struct PickupVelocity { float zPerSecond; };                        // fall speed
 
     /* client-side animation state (spin + bob) */
     struct PickupAnim {

@@ -4,6 +4,7 @@
 #include "UTIL/Utilities.h"
 // include all components, tags, and systems used by this program
 #include "GAME/ItemPickupComponents.h"
+#include "GAME/WeaponComponents.h"  
 #include "DRAW/DrawComponents.h"
 #include "GAME/GameComponents.h"
 #include "APP/Window.hpp"
@@ -11,8 +12,8 @@
 #include "AUDIO/AudioSystem.h"
 #include "AI/AIComponents.h"
 #include "UI/UIComponents.h"
-// Local routines for specific application behavior
 
+// Local routines for specific application behavior
 void GraphicsBehavior(entt::registry& registry);
 void GameplayBehavior(entt::registry& registry);
 void AudioBehavior(entt::registry& registry);
@@ -22,6 +23,7 @@ void PickupBehavior(entt::registry& registry);
 void MainLoopBehavior(entt::registry& registry);
 
 enum class AppState { Splash, MainMenu, Settings, Credits, Scores, GameLoop };
+
 // Architecture is based on components/entities pushing updates to other components/entities (via "patch" function)
 int main()
 {
@@ -76,7 +78,11 @@ void AIBehavior(entt::registry& registry)
 void PickupBehavior(entt::registry& registry)
 {
 	auto ent = registry.create();
-	registry.emplace<GAME::PickupManager>(ent);   // ? no ItemDropConfig here
+	registry.emplace<GAME::PickupManager>(ent);
+
+	/* weapon manager */
+	auto weaponEnt = registry.create();
+	registry.emplace<GAME::WeaponManager>(weaponEnt);
 }
 
 void UIBehavior(entt::registry& registry)

@@ -136,6 +136,8 @@ namespace GAME
 
 		auto colliders = reg.view<DRAW::OBB, Collidable>();
 
+		UTIL::Input input = reg.ctx().get<UTIL::Input>();
+
 		auto HandlePair = [&](entt::entity a, entt::entity b)
 			{
 
@@ -174,6 +176,11 @@ namespace GAME
 					if (auto* o = reg.try_get<BulletOwner>(a))
 						if (o->owner == b) return;
 
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.4f, 1.0f);
+					}
+
 					--reg.get<Health>(b).health;
 					reg.emplace<Invulnerability>(b,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
@@ -187,6 +194,11 @@ namespace GAME
 				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Invulnerability>(a) && !reg.any_of<AI::Kamikaze>(b))
 				{
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.5f, 1.0f);
+					}
+
 					--reg.get<Health>(a).health;
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
@@ -200,6 +212,11 @@ namespace GAME
 				if (reg.all_of<Player>(a) && reg.all_of<AI::Explosion>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 1.0f, 1.0f);
+					}
+
 					--reg.get<Health>(a).health;
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
@@ -213,6 +230,11 @@ namespace GAME
 				if (reg.all_of<Player>(a) && reg.all_of<AI::OrbAttack>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.8f, 1.0f);
+					}
+
 					--reg.get<Health>(a).health;
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
@@ -225,9 +247,16 @@ namespace GAME
 						<< reg.get<Health>(a).health << '\n';
 					return;
 				}
+
+				// Lazer Sweep attack
 				if (reg.all_of<Player>(a) && reg.all_of<AI::LazerSweep>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.7f, 1.0f);
+					}
+
 					--reg.get<Health>(a).health;
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")

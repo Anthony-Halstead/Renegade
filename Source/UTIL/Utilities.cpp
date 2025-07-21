@@ -302,10 +302,8 @@ namespace UTIL
 		GVector::SubtractVectorF(endPoint, transform.matrix.row4, direction);
 
 		float length = 0.0f;
-		/*	GVECTORF dotProduct;*/
 		GVector::DotF(direction, direction, length);
 
-		//length = dotProduct.x; // since direction is a 3D vector, we can use any component for length
 		if (length < 1e-6f) return; // Avoid division by zero
 		length = std::sqrt(length);
 

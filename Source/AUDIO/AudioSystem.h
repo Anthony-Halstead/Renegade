@@ -72,7 +72,16 @@ namespace AUDIO {
 			auto& audio = registry->get<AudioDevice>(entity).engine;
 			audio.SetMasterVolume(volume);
 		}
-
+		static void SetGlobalSoundVolume(float volume) {
+			if (!registry || !registry->valid(entity)) return;
+			auto& audio = registry->get<AudioDevice>(entity).engine;
+			audio.SetGlobalSoundVolume(volume);
+		}
+		static void SetGlobalMusicVolume(float volume) {
+			if (!registry || !registry->valid(entity)) return;
+			auto& audio = registry->get<AudioDevice>(entity).engine;
+			audio.SetGlobalMusicVolume(volume);
+		}
 		static void StopAllSounds() {
 			if (!registry || !registry->valid(entity)) return;
 			registry->get<AudioDevice>(entity).engine.StopSounds();

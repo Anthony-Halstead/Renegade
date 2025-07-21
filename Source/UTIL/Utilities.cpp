@@ -293,18 +293,19 @@ namespace UTIL
 
 		return w;
 	}
-	void StretchModel(entt::registry& registry, GAME::Transform& transform, const GW::MATH::GVECTORF startPoint, 
-		GW::MATH::GVECTORF endPoint, const GW::MATH::GVECTORF& scaleValue, const char axis)
+
+	void StretchModel(entt::registry& registry, GAME::Transform& transform, GW::MATH::GVECTORF startPoint,
+		GW::MATH::GVECTORF endPoint, GW::MATH::GVECTORF scaleValue, char axis)
 	{
 		using namespace GW::MATH;
 		GVECTORF direction;
-		GVector::SubtractVectorF(endPoint, startPoint, direction);
+		GVector::SubtractVectorF(endPoint, transform.matrix.row4, direction);
 
 		float length = 0.0f;
-		GVECTORF dotProduct;
-		GVector::DotF(direction, direction, dotProduct);
+		/*	GVECTORF dotProduct;*/
+		GVector::DotF(direction, direction, length);
 
-		length = dotProduct.x; // since direction is a 3D vector, we can use any component for length
+		//length = dotProduct.x; // since direction is a 3D vector, we can use any component for length
 		if (length < 1e-6f) return; // Avoid division by zero
 		length = std::sqrt(length);
 
@@ -315,7 +316,7 @@ namespace UTIL
 		// Midpoint for positioning
 		GVECTORF midpoint;
 		GVector::AddVectorF(startPoint, endPoint, midpoint);
-		GMatrix::ScaleLocalF(startPoint, 0.5f, midpoint);
+		GMatrix::ScaleLocalF(transform.matrix, midpoint, transform.matrix);
 
 		GVECTORF position;
 		GVector::AddVectorF(startPoint, endPoint, position);

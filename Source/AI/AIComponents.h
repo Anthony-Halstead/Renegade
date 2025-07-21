@@ -1,4 +1,5 @@
 ﻿#include <vector>
+#include "../GAME/GameComponents.h"
 #include "FormationPatterns.h"
 #ifndef AI_COMPONENTS_H_
 #define AI_COMPONENTS_H_
@@ -87,12 +88,16 @@ namespace AI
 	struct SpawnKamikazeEnemy { float spawnTimer = 0.0f; };
 	struct RushTarget { GW::MATH::GVECTORF trg; };
 	struct LazerAttack {};
+	struct LazerCooldown
+	{
+		float cooldown = 6.0f;
+		float timer = 0.0f;
+	};
 	struct LazerSweep
 	{
 		GW::MATH::GVECTORF pointA;
 		GW::MATH::GVECTORF pointB;
-		float duration;
-		float width;
+		float duration = 2.0f;
 	};
 	struct BossHalfHealth {};
 	struct BossFanAttack

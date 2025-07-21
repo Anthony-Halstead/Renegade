@@ -56,8 +56,8 @@ namespace UTIL
 	void Scale(GAME::Transform& transform, float scale);
 	GW::MATH::GOBBF BuildOBB(const GW::MATH::GOBBF& local, const GAME::Transform& T);
 
-	void StretchModel(entt::registry& registry, GAME::Transform& transform, const GW::MATH::GVECTORF startPoint,
-		GW::MATH::GVECTORF endPoint, const GW::MATH::GVECTORF& scale, const char axis);
+	void StretchModel(entt::registry& registry, GAME::Transform& transform, GW::MATH::GVECTORF startPoint,
+		GW::MATH::GVECTORF endPoint, GW::MATH::GVECTORF scaleValue, char axis);
 
 } // namespace UTIL
 #endif // !UTILITIES_H_

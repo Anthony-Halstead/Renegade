@@ -319,6 +319,21 @@ namespace AI
 			}
 		}
 	}
+	void LazerSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
+	{
+		if (!R.any_of<LazerCooldown>(boss))
+			R.emplace_or_replace<LazerCooldown>(boss);
+		auto& cd = R.get<LazerCooldown>(boss);
+
+		cd.timer -= dt;
+		if (cd.timer > 0.f) return;
+
+		cd.timer = cd.cooldown;
+
+		const GW::MATH::GVECTORF bossPos = R.get<GAME::Transform>(boss).matrix.row4;
+
+		Damage::EnemyLazerAttack(R, boss, bossPos);
+	}
 	void KamikazeSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
 	{
 		if (!R.any_of<SpawnKamikazeEnemy, GAME::Health>(boss))
@@ -336,6 +351,8 @@ namespace AI
 		spawnK.spawnTimer = 3.0f;
 
 		const GW::MATH::GVECTORF bossPos = R.get<GAME::Transform>(boss).matrix.row4;
+
+
 		SpawnKamikaze(R, bossPos);
 	}
 	void FlockSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
@@ -474,7 +491,6 @@ namespace AI
 
 		cd.timer = cd.cooldown;
 	}
-
 	void UpdateBossOneBehavior(entt::registry& R, entt::entity boss)
 	{
 		if (!R.valid(boss) || !R.all_of<GAME::Health, GAME::SpawnEnemies>(boss))
@@ -483,11 +499,11 @@ namespace AI
 		auto& hp = R.get<GAME::Health>(boss);
 		if (hp.health <= 0)
 			return;
-
 		const float dt = static_cast<float>(R.ctx().get<UTIL::DeltaTime>().dtSec);
 
 		if (!R.any_of<GAME::SpawnEnemies>(boss))
 			R.emplace_or_replace<GAME::SpawnEnemies>(boss);
+
 		OrbSpawnBehavior(R, boss, dt);
 		WaveSpawningBehavior(R, boss, dt);
 		MineBehavior(R, boss, dt);
@@ -502,7 +518,6 @@ namespace AI
 		auto& hp = registry.get<GAME::Health>(entity);
 		if (hp.health <= 0)
 			return;
-
 		if (!registry.any_of<AI::BossTwoStates>(entity))
 			registry.emplace<AI::BossTwoStates>(entity);
 		auto& bossState = registry.get<AI::BossTwoStates>(entity);
@@ -648,6 +663,10 @@ namespace AI
 
 		if (!registry.valid(entity) || !registry.all_of<GAME::Health, GAME::SpawnEnemies>(entity))
 			return;
+		const float dt = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
+
+		if (!registry.any_of<GAME::SpawnEnemies>(entity))
+			registry.emplace_or_replace<GAME::SpawnEnemies>(entity);
 
 		auto& hp = registry.get<GAME::Health>(entity);
 		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
@@ -655,11 +674,7 @@ namespace AI
 		if (hp.health <= 0)
 			return;
 
-
-		const float dt = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
-
-		if (!registry.any_of<GAME::SpawnEnemies>(entity))
-			registry.emplace_or_replace<GAME::SpawnEnemies>(entity);
+		LazerSpawnBehavior(registry, entity, dt);
 		OrbSpawnBehavior(registry, entity, dt);
 		WaveSpawningBehavior(registry, entity, dt);
 		MineBehavior(registry, entity, dt);
@@ -678,8 +693,7 @@ namespace AI
 			FormationMember,
 			MoveTarget,
 			GAME::Transform,
-			GAME::Velocity
-		>(entt::exclude<AI::FlyOffScreen, AI::ReturningToPosition>);
+			GAME::Velocity>(entt::exclude<AI::FlyOffScreen, AI::ReturningToPosition>);
 
 		const float rotSpeedDeg = 90.f;
 		const float rotStepRad = G_DEGREE_TO_RADIAN_F(rotSpeedDeg) * r.ctx().get<UTIL::DeltaTime>().dtSec;
@@ -967,7 +981,7 @@ namespace AI
 
 			if (reached)
 			{
-				registry.emplace<GAME::Destroy>(ex);
+				registry.emplace_or_replace<GAME::Destroy>(ex);
 			}
 		}
 	}
@@ -1072,6 +1086,29 @@ namespace AI
 		}
 	}
 
+	void UpdateLazerAttack(entt::registry& registry)
+	{
+
+		entt::basic_view lazerView = registry.view<AI::LazerSweep, GAME::Transform>();
+
+		if (lazerView.begin() == lazerView.end()) return;
+		float dt = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
+		for (auto entity : lazerView)
+		{
+			auto& lazerTransform = lazerView.get<GAME::Transform>(entity);
+			auto& lazerSweep = lazerView.get<AI::LazerSweep>(entity);
+			float LENGTH_SCALE = 250.0f;
+			float WIDTH_SCALE = 40.0f;
+			UTIL::RotateTowards(lazerTransform, lazerSweep.pointB, G_DEGREE_TO_RADIAN_F(90) * dt);
+			GW::MATH::GVector::ScaleF(lazerTransform.matrix.row3, LENGTH_SCALE, lazerTransform.matrix.row3);
+			GW::MATH::GVector::ScaleF(lazerTransform.matrix.row1, WIDTH_SCALE, lazerTransform.matrix.row1);
+
+			lazerSweep.duration -= dt;
+			if (lazerSweep.duration <= 0.0f)
+				registry.emplace_or_replace<GAME::Destroy>(entity);
+		}
+	}
+
 	void UpdateBossSpawn(entt::registry& registry, entt::entity entity, unsigned int& bossWaveCount)
 	{
 		// Check if boss and enemy views are empty
@@ -1112,6 +1149,7 @@ namespace AI
 			UpdateExplosions(registry);
 			UpdateOrbAttack(registry);
 			UpdateOrbLifetime(registry);
+			UpdateLazerAttack(registry);
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);
 			UpdateBossSpawn(registry, entity, bossWaveCount);

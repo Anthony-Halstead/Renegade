@@ -293,4 +293,48 @@ namespace UTIL
 
 		return w;
 	}
+
+	void StretchModel(entt::registry& registry, GAME::Transform& transform, GW::MATH::GVECTORF startPoint,
+		GW::MATH::GVECTORF endPoint, GW::MATH::GVECTORF scaleValue, char axis)
+	{
+		using namespace GW::MATH;
+		GVECTORF direction;
+		GVector::SubtractVectorF(endPoint, transform.matrix.row4, direction);
+
+		float length = 0.0f;
+		GVector::DotF(direction, direction, length);
+
+		if (length < 1e-6f) return; // Avoid division by zero
+		length = std::sqrt(length);
+
+		// Normalize direction
+		GVECTORF normalizedDirection;
+		GVector::NormalizeF(direction, normalizedDirection);
+
+		// Midpoint for positioning
+		GVECTORF midpoint;
+		GVector::AddVectorF(startPoint, endPoint, midpoint);
+		GMatrix::ScaleLocalF(transform.matrix, midpoint, transform.matrix);
+
+		GVECTORF position;
+		GVector::AddVectorF(startPoint, endPoint, position);
+
+		// Set scale based on stretch axis
+		GVECTORF scale = { 1.0f, 1.0f, 1.0f, 0.0f };
+		switch (axis)
+		{
+		case 'X':
+			scale.x = length;
+			break;
+		case 'Y':
+			scale.y = length;
+			break;
+		case 'Z':
+			scale.z = length;
+			break;
+		default:
+			scale.x = length; // Default to X if no valid axis is provided
+			break;
+		}
+	}
 } // namespace UTIL

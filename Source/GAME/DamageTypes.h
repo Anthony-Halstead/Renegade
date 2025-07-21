@@ -44,7 +44,6 @@ namespace Damage
 		float minZ = -halfHeight;
 		float maxZ = halfHeight;
 
-
 		GW::MATH::GVECTORF BR{ maxX,0.0f,minZ,0.0f };
 
 		GW::MATH::GVECTORF brDir;
@@ -62,9 +61,7 @@ namespace Damage
 		T.matrix.row3 = blDir;
 
 		reg.emplace<GAME::Transform>(lazerEntity, T);
-
 		reg.emplace<AI::LazerSweep>(lazerEntity, blDir, BR);
-
 
 		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);
 
@@ -89,7 +86,6 @@ namespace Damage
 
 		GW::MATH::GVECTORF targetScale = { orbRadius, orbRadius, orbRadius, 0 };
 		reg.emplace<AI::OrbGrowth>(orbEntity, targetScale, orbGrowth);
-
 	}
 }
 #endif

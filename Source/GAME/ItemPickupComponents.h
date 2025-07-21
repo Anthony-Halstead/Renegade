@@ -17,7 +17,7 @@ namespace GAME {
     struct PickupManager { ItemDropConfig itemDropConfig; };            // 1× in scene
     struct ItemPickup { PickupType type; };                             // on every drop
     struct PickupVelocity { float zPerSecond; };                        // fall speed
-
+    
     /* client-side animation state (spin + bob) */
     struct PickupAnim {
         float baseY;      // reference Y so bob is additive

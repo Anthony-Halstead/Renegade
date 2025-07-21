@@ -4,7 +4,8 @@
 #include "UTIL/Utilities.h"
 // include all components, tags, and systems used by this program
 #include "GAME/ItemPickupComponents.h"
-#include "GAME/WeaponComponents.h"  
+#include "GAME/WeaponComponents.h"
+#include "GAME/ShieldComponents.h"
 #include "DRAW/DrawComponents.h"
 #include "GAME/GameComponents.h"
 #include "APP/Window.hpp"
@@ -83,6 +84,11 @@ void PickupBehavior(entt::registry& registry)
 	/* weapon manager */
 	auto weaponEnt = registry.create();
 	registry.emplace<GAME::WeaponManager>(weaponEnt);
+
+	// in main.cpp inside PickupBehavior() – same place you made WeaponManager
+	auto shEnt = registry.create();
+	registry.emplace<GAME::ShieldManager>(shEnt);
+
 }
 
 void UIBehavior(entt::registry& registry)

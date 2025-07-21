@@ -76,5 +76,11 @@ namespace GAME
 		int scores[10];
 	};
 
+	struct Shield
+	{
+		unsigned hitsLeft = 2;				// absorbs this many hits before vanishing
+		entt::entity visual = entt::null;	// id of the rendered shield (optional)
+	};
+
 }// namespace GAME
 #endif // !GAME_COMPONENTS_H_

@@ -11,8 +11,24 @@
 
 namespace GAME
 {
-	// Helper functions
+	// ──────────────────────────────  helper  ───────────────────────────────
+	inline void ApplyPlayerDamage(entt::registry& reg, entt::entity player)
+	{
+		if (auto* sh = reg.try_get<Shield>(player); sh && sh->hitsLeft > 0) {
+			--sh->hitsLeft;
+			if (sh->hitsLeft == 0) {
+				if (sh->visual != entt::null && reg.valid(sh->visual))
+					reg.destroy(sh->visual);        // remove shield mesh
+				reg.remove<Shield>(player);          // strip component
+			}
+			return;                                 // damage fully absorbed
+		}
 
+		// no shield (or shield spent) – hurt player
+		--reg.get<Health>(player).health;
+	}
+
+	// ──────────────────────────────  existing helpers  ─────────────────────────
 	void UpdateClampToScreen(entt::registry& registry, float marginOffset = 23.f)
 	{
 		auto wView = registry.view<APP::Window>();
@@ -39,9 +55,9 @@ namespace GAME
 	}
 
 	/*void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
-	{
+{
 		GW::MATH::GQUATERNIONF rotation;
-		GW::MATH::GVECTORF scale;
+		GW::MATH::GVECTORF     scale;
 
 		GW::MATH::GMatrix::GetScaleF(transform.matrix, scale);
 
@@ -53,7 +69,6 @@ namespace GAME
 
 		GW::MATH::GQuaternion::SetByMatrixF(transform.matrix, rotation);
 		GW::MATH::GQuaternion::MultiplyQuaternionF(obb.rotation, rotation, obb.rotation);
-
 	}*/
 
 	void BounceEnemy(const GW::MATH::GVECTORF& transform, GW::MATH::GVECTORF& velocity, const GW::MATH::GOBBF& obb)
@@ -92,7 +107,7 @@ namespace GAME
 		GW::MATH::GVector::AddVectorF(transform, normal, transform);
 	}
 
-	// Update functions
+	// ──────────────────────────────  Update functions  ─────────────────────────
 	void UpdatePosition(entt::registry& reg)
 	{
 		const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
@@ -138,7 +153,7 @@ namespace GAME
 
 		auto HandlePair = [&](entt::entity a, entt::entity b)
 			{
-
+				/* ───────── bullet hits enemy ───────── */
 				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Hit>(b))
 				{
@@ -153,6 +168,7 @@ namespace GAME
 					return;
 				}
 
+				/* ───────── bullet hits boss ───────── */
 				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy_Boss>(b) &&
 					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
 				{
@@ -168,13 +184,14 @@ namespace GAME
 					return;
 				}
 
+				/* ───────── bullet hits player ───────── */
 				if (reg.all_of<Bullet>(a) && reg.all_of<Player>(b) &&
 					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
 				{
 					if (auto* o = reg.try_get<BulletOwner>(a))
 						if (o->owner == b) return;
 
-					--reg.get<Health>(b).health;
+					ApplyPlayerDamage(reg, b);
 					reg.emplace<Invulnerability>(b,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -183,11 +200,11 @@ namespace GAME
 					return;
 				}
 
-				// Prevents damage from kamikaze enemies colliding with player, only explosion damages player
+				/* ───────── enemy ram player (shield aware) ───────── */
 				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Invulnerability>(a) && !reg.any_of<AI::Kamikaze>(b))
 				{
-					--reg.get<Health>(a).health;
+					ApplyPlayerDamage(reg, a);
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -196,11 +213,11 @@ namespace GAME
 					return;
 				}
 
-				// Explosion damage
+				/* ───────── explosion hits player ───────── */
 				if (reg.all_of<Player>(a) && reg.all_of<AI::Explosion>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
-					--reg.get<Health>(a).health;
+					ApplyPlayerDamage(reg, a);
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -209,18 +226,15 @@ namespace GAME
 					return;
 				}
 
-				// Orb attack
+				/* ───────── orb hits player ───────── */
 				if (reg.all_of<Player>(a) && reg.all_of<AI::OrbAttack>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
-					--reg.get<Health>(a).health;
+					ApplyPlayerDamage(reg, a);
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
-
-
 					reg.emplace_or_replace<Destroy>(b);
-
 					std::cout << "Player's current health: "
 						<< reg.get<Health>(a).health << '\n';
 					return;

@@ -11,7 +11,7 @@
 
 namespace GAME
 {
-	// ──────────────────────────────  helper  ───────────────────────────────
+	// Helper functions
 	inline void ApplyPlayerDamage(entt::registry& reg, entt::entity player)
 	{
 		if (auto* sh = reg.try_get<Shield>(player); sh && sh->hitsLeft > 0) {
@@ -28,7 +28,6 @@ namespace GAME
 		--reg.get<Health>(player).health;
 	}
 
-	// ──────────────────────────────  existing helpers  ─────────────────────────
 	void UpdateClampToScreen(entt::registry& registry, float marginOffset = 23.f)
 	{
 		auto wView = registry.view<APP::Window>();
@@ -107,7 +106,7 @@ namespace GAME
 		GW::MATH::GVector::AddVectorF(transform, normal, transform);
 	}
 
-	// ──────────────────────────────  Update functions  ─────────────────────────
+	// Update functions
 	void UpdatePosition(entt::registry& reg)
 	{
 		const double dt = reg.ctx().get<UTIL::DeltaTime>().dtSec;
@@ -151,9 +150,12 @@ namespace GAME
 
 		auto colliders = reg.view<DRAW::OBB, Collidable>();
 
+
+		UTIL::Input input = reg.ctx().get<UTIL::Input>();
+
 		auto HandlePair = [&](entt::entity a, entt::entity b)
 			{
-				/* ───────── bullet hits enemy ───────── */
+				// Bullet Damage Towards Enemies
 				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Hit>(b))
 				{
@@ -168,7 +170,7 @@ namespace GAME
 					return;
 				}
 
-				/* ───────── bullet hits boss ───────── */
+				// Bullet Damage Towards Boss
 				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy_Boss>(b) &&
 					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
 				{
@@ -184,7 +186,7 @@ namespace GAME
 					return;
 				}
 
-				/* ───────── bullet hits player ───────── */
+				// Bullet Damage On Player
 				if (reg.all_of<Bullet>(a) && reg.all_of<Player>(b) &&
 					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
 				{
@@ -192,6 +194,14 @@ namespace GAME
 						if (o->owner == b) return;
 
 					ApplyPlayerDamage(reg, b);
+
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.4f, 1.0f);
+					}
+
+					--reg.get<Health>(b).health;
+
 					reg.emplace<Invulnerability>(b,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -200,11 +210,19 @@ namespace GAME
 					return;
 				}
 
-				/* ───────── enemy ram player (shield aware) ───────── */
+				// Prevents damage from kamikaze enemies colliding with player, only explosion damages player
 				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Invulnerability>(a) && !reg.any_of<AI::Kamikaze>(b))
 				{
 					ApplyPlayerDamage(reg, a);
+
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.5f, 1.0f);
+					}
+
+					--reg.get<Health>(a).health;
+
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -213,11 +231,20 @@ namespace GAME
 					return;
 				}
 
-				/* ───────── explosion hits player ───────── */
+				// Explosion damage
 				if (reg.all_of<Player>(a) && reg.all_of<AI::Explosion>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+
 					ApplyPlayerDamage(reg, a);
+
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 1.0f, 1.0f);
+					}
+
+					--reg.get<Health>(a).health;
+
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -226,15 +253,42 @@ namespace GAME
 					return;
 				}
 
-				/* ───────── orb hits player ───────── */
+				// Orb attack
 				if (reg.all_of<Player>(a) && reg.all_of<AI::OrbAttack>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+
 					ApplyPlayerDamage(reg, a);
+
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.8f, 1.0f);
+					}
+
+					--reg.get<Health>(a).health;
+
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
 					reg.emplace_or_replace<Destroy>(b);
+					std::cout << "Player's current health: "
+						<< reg.get<Health>(a).health << '\n';
+					return;
+				}
+
+				// Lazer Sweep attack
+				if (reg.all_of<Player>(a) && reg.all_of<AI::LazerSweep>(b) &&
+					!reg.any_of<Invulnerability>(a))
+				{
+					if (input.connectedControllers > 0)
+					{
+						input.gamePads.StartVibration(0, 0.0f, 0.7f, 1.0f);
+					}
+
+					--reg.get<Health>(a).health;
+					reg.emplace<Invulnerability>(a,
+						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
+						.at("invulnPeriod").as<float>());
 					std::cout << "Player's current health: "
 						<< reg.get<Health>(a).health << '\n';
 					return;

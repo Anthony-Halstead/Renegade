@@ -225,6 +225,17 @@ namespace GAME
 						<< reg.get<Health>(a).health << '\n';
 					return;
 				}
+				if (reg.all_of<Player>(a) && reg.all_of<AI::LazerSweep>(b) &&
+					!reg.any_of<Invulnerability>(a))
+				{
+					--reg.get<Health>(a).health;
+					reg.emplace<Invulnerability>(a,
+						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
+						.at("invulnPeriod").as<float>());
+					std::cout << "Player's current health: "
+						<< reg.get<Health>(a).health << '\n';
+					return;
+				}
 			};
 
 		for (auto itA = colliders.begin(); itA != colliders.end(); ++itA)

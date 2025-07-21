@@ -1,4 +1,4 @@
-#include "../AI/AIComponents.h"
+﻿#include "../AI/AIComponents.h"
 #include "GameComponents.h"
 #include "../UTIL/Utilities.h"
 
@@ -29,44 +29,45 @@ namespace Damage
 		reg.emplace<AI::ExplosionGrowth>(explosion, targetScale, explosionGrowth);
 	}
 
-	///***This is just an idea for a basic bullet damage design, not currently used***///
-
-	//inline void Bullet(entt::registry& reg, entt::entity entity)
-	//{
-	//	std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
-
-	//	float bulletDamage = (*config).at("Bullet").at("damage").as<float>();
-	//	// This function is called when a bullet hits an entity.
-	//	// It can be used to apply damage to the hit entity.
-	//	std::cout << "Bullet hit entity: " << int(entity) << std::endl;
-	//	auto* health = reg.try_get<GAME::Health>(entity);
-	//	if (health)
-	//	{
-	//		health->health = (health->health > bulletDamage) ? health->health - bulletDamage : 0;
-	//		std::cout << "Entity " << int(entity) << " took " << bulletDamage << " damage from bullet. Remaining health: " << health->health << std::endl;
-	//		if (health->health == 0 && !reg.all_of<GAME::Destroy>(entity))
-	//		{
-	//			reg.emplace<GAME::Destroy>(entity);
-	//			std::cout << "Entity " << int(entity) << " destroyed by bullet." << std::endl;
-	//		}
-	//	}
-	//}
-
-	inline void EnemyLazerAttack(entt::registry& reg, entt::entity entity,
-		const GW::MATH::GVECTORF& pointA, const GW::MATH::GVECTORF& pointB,
-		float duration, float width)
+	inline void EnemyLazerAttack(entt::registry& reg, entt::entity entity, GW::MATH::GVECTORF spawnPos)
 	{
 		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
-		entt::entity lazerEntity = reg.create();
+		auto wView = reg.view<APP::Window>();
+		if (wView.empty()) return;
+		const auto& window = wView.get<APP::Window>(*wView.begin());
 
-		const auto& transform = reg.get<GAME::Transform>(entity).matrix;
-		UTIL::CreateTransform(reg, lazerEntity, transform);
+		float halfWidth = static_cast<float>(window.width) / 23.f;
+		float halfHeight = static_cast<float>(window.height) / 23.f;
+
+		float minX = -halfWidth;
+		float maxX = halfWidth;
+		float minZ = -halfHeight;
+		float maxZ = halfHeight;
+
+
+		GW::MATH::GVECTORF BR{ maxX,0.0f,minZ,0.0f };
+
+		GW::MATH::GVECTORF brDir;
+		GW::MATH::GVector::NormalizeF(BR, brDir);
+
+		GW::MATH::GVECTORF blDir = brDir;
+		blDir.z = -blDir.z;
 
 		std::string lazerModel = (*config).at("EnemyLazer").at("model").as<std::string>();
-		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);		
+		entt::entity lazerEntity = reg.create();
 
-		reg.emplace<AI::LazerSweep>(lazerEntity, pointA, pointB, duration, width);
-		reg.emplace<AI::LazerAttack>(lazerEntity);
+		GAME::Transform T{ GW::MATH::GIdentityMatrixF };
+		GW::MATH::GVECTORF newPos = GW::MATH::GVECTORF{ spawnPos.x,spawnPos.y,spawnPos.z - 20.f,spawnPos.w };
+		T.matrix.row4 = newPos;
+		T.matrix.row3 = blDir;
+
+		reg.emplace<GAME::Transform>(lazerEntity, T);
+
+		reg.emplace<AI::LazerSweep>(lazerEntity, blDir, BR);
+
+
+		UTIL::CreateDynamicObjects(reg, lazerEntity, lazerModel);
+
 	}
 
 	inline void EnemyOrbAttack(entt::registry& reg, const GW::MATH::GVECTORF& spawnPos)

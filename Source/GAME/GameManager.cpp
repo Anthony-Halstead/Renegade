@@ -12,6 +12,21 @@
 namespace GAME
 {
 	// Helper functions
+	inline void ApplyPlayerDamage(entt::registry& reg, entt::entity player)
+	{
+		if (auto* sh = reg.try_get<Shield>(player); sh && sh->hitsLeft > 0) {
+			--sh->hitsLeft;
+			if (sh->hitsLeft == 0) {
+				if (sh->visual != entt::null && reg.valid(sh->visual))
+					reg.destroy(sh->visual);        // remove shield mesh
+				reg.remove<Shield>(player);          // strip component
+			}
+			return;                                 // damage fully absorbed
+		}
+
+		// no shield (or shield spent) – hurt player
+		--reg.get<Health>(player).health;
+	}
 
 	void UpdateClampToScreen(entt::registry& registry, float marginOffset = 23.f)
 	{
@@ -39,9 +54,9 @@ namespace GAME
 	}
 
 	/*void SetUpOBB(GW::MATH::GOBBF& obb, Transform& transform)
-	{
+{
 		GW::MATH::GQUATERNIONF rotation;
-		GW::MATH::GVECTORF scale;
+		GW::MATH::GVECTORF     scale;
 
 		GW::MATH::GMatrix::GetScaleF(transform.matrix, scale);
 
@@ -53,7 +68,6 @@ namespace GAME
 
 		GW::MATH::GQuaternion::SetByMatrixF(transform.matrix, rotation);
 		GW::MATH::GQuaternion::MultiplyQuaternionF(obb.rotation, rotation, obb.rotation);
-
 	}*/
 
 	void BounceEnemy(const GW::MATH::GVECTORF& transform, GW::MATH::GVECTORF& velocity, const GW::MATH::GOBBF& obb)
@@ -136,11 +150,12 @@ namespace GAME
 
 		auto colliders = reg.view<DRAW::OBB, Collidable>();
 
+
 		UTIL::Input input = reg.ctx().get<UTIL::Input>();
 
 		auto HandlePair = [&](entt::entity a, entt::entity b)
 			{
-
+				// Bullet Damage Towards Enemies
 				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Hit>(b))
 				{
@@ -155,6 +170,7 @@ namespace GAME
 					return;
 				}
 
+				// Bullet Damage Towards Boss
 				if (reg.all_of<Bullet>(a) && reg.all_of<Enemy_Boss>(b) &&
 					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
 				{
@@ -170,11 +186,14 @@ namespace GAME
 					return;
 				}
 
+				// Bullet Damage On Player
 				if (reg.all_of<Bullet>(a) && reg.all_of<Player>(b) &&
 					!reg.any_of<Hit>(b) && !reg.any_of<Invulnerability>(b))
 				{
 					if (auto* o = reg.try_get<BulletOwner>(a))
 						if (o->owner == b) return;
+
+					ApplyPlayerDamage(reg, b);
 
 					if (input.connectedControllers > 0)
 					{
@@ -182,6 +201,7 @@ namespace GAME
 					}
 
 					--reg.get<Health>(b).health;
+
 					reg.emplace<Invulnerability>(b,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -194,12 +214,15 @@ namespace GAME
 				if (reg.all_of<Player>(a) && reg.all_of<Enemy>(b) &&
 					!reg.any_of<Invulnerability>(a) && !reg.any_of<AI::Kamikaze>(b))
 				{
+					ApplyPlayerDamage(reg, a);
+
 					if (input.connectedControllers > 0)
 					{
 						input.gamePads.StartVibration(0, 0.0f, 0.5f, 1.0f);
 					}
 
 					--reg.get<Health>(a).health;
+
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -212,12 +235,16 @@ namespace GAME
 				if (reg.all_of<Player>(a) && reg.all_of<AI::Explosion>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+
+					ApplyPlayerDamage(reg, a);
+
 					if (input.connectedControllers > 0)
 					{
 						input.gamePads.StartVibration(0, 0.0f, 1.0f, 1.0f);
 					}
 
 					--reg.get<Health>(a).health;
+
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -230,19 +257,20 @@ namespace GAME
 				if (reg.all_of<Player>(a) && reg.all_of<AI::OrbAttack>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+
+					ApplyPlayerDamage(reg, a);
+
 					if (input.connectedControllers > 0)
 					{
 						input.gamePads.StartVibration(0, 0.0f, 0.8f, 1.0f);
 					}
 
 					--reg.get<Health>(a).health;
+
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
-
-
 					reg.emplace_or_replace<Destroy>(b);
-
 					std::cout << "Player's current health: "
 						<< reg.get<Health>(a).health << '\n';
 					return;

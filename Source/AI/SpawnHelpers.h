@@ -60,7 +60,7 @@ namespace AI
 
 		registry.emplace<GAME::Velocity>(drone, GAME::Velocity{});
 		registry.emplace<GAME::Enemy>(drone);
-		registry.emplace<GAME::EnemyTitle>(drone, "Spin Drone");
+		registry.emplace<GAME::EnemyTitle>(drone, "SpinningDrone");
 		unsigned int droneHealth = (*config).at("SpinningDrone").at("hitpoints").as<unsigned int>();
 		registry.emplace<GAME::Health>(drone, droneHealth);
 

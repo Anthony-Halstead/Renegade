@@ -200,8 +200,6 @@ namespace GAME
 						input.gamePads.StartVibration(0, 0.0f, 0.4f, 1.0f);
 					}
 
-					--reg.get<Health>(b).health;
-
 					reg.emplace<Invulnerability>(b,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -220,8 +218,6 @@ namespace GAME
 					{
 						input.gamePads.StartVibration(0, 0.0f, 0.5f, 1.0f);
 					}
-
-					--reg.get<Health>(a).health;
 
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
@@ -243,8 +239,6 @@ namespace GAME
 						input.gamePads.StartVibration(0, 0.0f, 1.0f, 1.0f);
 					}
 
-					--reg.get<Health>(a).health;
-
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
@@ -264,8 +258,6 @@ namespace GAME
 					{
 						input.gamePads.StartVibration(0, 0.0f, 0.8f, 1.0f);
 					}
-
-					--reg.get<Health>(a).health;
 
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")

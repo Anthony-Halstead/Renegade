@@ -847,8 +847,6 @@ namespace AI
 		entt::basic_view bossEnemies = registry.view<GAME::Enemy_Boss>();
 		entt::basic_view lesserEnemies = registry.view<GAME::Enemy>();
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-		unsigned int bossHealth = (*config).at("EnemyBoss").at("hitpoints").as<unsigned int>();
-		unsigned int bossCount = (*config).at("Player").at("bossCount").as<unsigned int>();
 
 		entt::entity bossEntity{};
 

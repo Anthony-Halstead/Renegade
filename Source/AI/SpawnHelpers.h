@@ -27,6 +27,7 @@ namespace AI
 		data.targetPos.y = 0.f;
 
 		R.emplace<GAME::Enemy>(d);
+		R.emplace<GAME::EnemyTitle>(d, "MineDrone");
 		R.emplace<GAME::Health>(d, 1u);
 		R.emplace<GAME::Velocity>(d);
 
@@ -59,6 +60,7 @@ namespace AI
 
 		registry.emplace<GAME::Velocity>(drone, GAME::Velocity{});
 		registry.emplace<GAME::Enemy>(drone);
+		registry.emplace<GAME::EnemyTitle>(drone, "Spin Drone");
 		unsigned int droneHealth = (*config).at("SpinningDrone").at("hitpoints").as<unsigned int>();
 		registry.emplace<GAME::Health>(drone, droneHealth);
 
@@ -75,6 +77,7 @@ namespace AI
 		R.emplace<AI::FormationMember>(e, AI::FormationMember{ anchor, idx });
 		R.emplace<AI::MoveTarget>(e);
 		R.emplace<GAME::Enemy>(e);
+		R.emplace<GAME::EnemyTitle>(e, GAME::EnemyTitle{ name });
 		R.emplace<GAME::Health>(e, eHealth);
 		GW::MATH::GMATRIXF enemyMatrix = GW::MATH::GIdentityMatrixF;
 		enemyMatrix.row4 = spawnPos;
@@ -183,6 +186,7 @@ namespace AI
 		std::string model = (*config).at("Kamikaze").at("model").as<std::string>();
 		reg.emplace<AI::RushTarget>(e);
 		reg.emplace<GAME::Enemy>(e);
+		reg.emplace<GAME::EnemyTitle>(e, "Kamikaze");
 		unsigned int health = (*config).at("Kamikaze").at("hitpoints").as<unsigned int>();
 		reg.emplace<GAME::Health>(e, health);
 		reg.emplace<AI::Kamikaze>(e);
@@ -220,7 +224,6 @@ namespace AI
 		else if (strcmp(name, "EnemyBoss_UFO") == 0)
 			AUDIO::AudioSystem::PlayMusicTrack("bossTwo");
 	}
-
 	inline void SpawnFinalBoss(entt::registry& R)
 	{
 		std::shared_ptr<const GameConfig> config = R.ctx().get<UTIL::Config>().gameConfig;

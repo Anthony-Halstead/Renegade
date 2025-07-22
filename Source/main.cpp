@@ -281,5 +281,7 @@ void MainLoopBehavior(entt::registry& registry)
 			if (winCloseFound) ++closedCount;
 		}
 
+		APP::CleanUpWindows(registry);
+
 	} while (winView.size() != closedCount);
 }

@@ -223,8 +223,7 @@ void GameplayBehavior(entt::registry& registry)
 	// Instantly rotate to face the mouse
 	UTIL::RotateTowards(playerTransform, targetPosition, FLT_MAX);
 
-
-	registry.emplace<GAME::Health>(player, playerHealth);
+	registry.emplace<GAME::Health>(player, GAME::Health{ playerHealth, playerHealth } );
 	registry.emplace<GAME::Transform>(player, playerTransform);
 
 	registry.emplace<GAME::Bounded>(player);

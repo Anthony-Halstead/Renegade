@@ -48,6 +48,7 @@ namespace GAME
 
 	struct Health {
 		unsigned health;
+		unsigned maxHealth = health;
 	};
 
 	struct Shatters {

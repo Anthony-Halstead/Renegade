@@ -141,7 +141,21 @@ void GAME::UpdatePickups(entt::registry& r, entt::entity /*unused*/)
 				break;
 			}
 
-			default:AUDIO::AudioSystem::PlaySFX("healthPickup", playerPos); break;
+			default:
+			{
+				auto* hp = r.try_get<Health>(player);
+				if (hp)
+				{
+					hp->health += 1;  // +1 health
+					if (hp->health > hp->maxHealth) hp->health = hp->maxHealth;
+				}
+				else
+				{
+					r.emplace<Health>(player, Health{ 1, 1 }); // create new health
+				}
+				AUDIO::AudioSystem::PlaySFX("healthPickup", playerPos);
+				break;
+			}
 			}
 
 			r.emplace_or_replace<Destroy>(e);

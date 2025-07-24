@@ -32,7 +32,6 @@ int main()
 	// All components, tags, and systems are stored in a single registry
 	entt::registry registry;
 
-
 	entt::locator<entt::registry>::reset(&registry, [](entt::registry*) {});
 
 	// initialize the ECS Component Logic
@@ -70,6 +69,7 @@ void AudioBehavior(entt::registry& registry)
 
 	AUDIO::AudioSystem::Initialize(&registry, audioEnt);
 }
+
 void AIBehavior(entt::registry& registry)
 {
 	auto e = registry.create();
@@ -185,7 +185,7 @@ void GameplayBehavior(entt::registry& registry)
 
 	registry.emplace<GAME::GameManager>(gameManager);
 	registry.emplace<GAME::StateManager>(stateManager);
-	registry.emplace<GAME::Player>(player);
+	registry.emplace<GAME::Player>(player, 0, 5);
 
 	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 	std::string playerModel = (*config).at("Player").at("model").as<std::string>();
@@ -243,7 +243,7 @@ void GameplayBehavior(entt::registry& registry)
 void MainLoopBehavior(entt::registry& registry)
 {
 	AppState state = AppState::GameLoop;
-	
+
 	int closedCount;
 	bool winCloseFound = false;
 	auto winView = registry.view<APP::Window>();
@@ -251,9 +251,9 @@ void MainLoopBehavior(entt::registry& registry)
 
 	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
 
-	if(!(*config).at("UI").at("disableSplash").as<bool>())
-		registry.emplace<UI::SplashScreen>(registry.view<UI::UIManager>().front(), UI::SplashScreen{(*config).at("UI").at("splashDuration").as<float>(), (*config).at("UI").at("fadeDuration").as<float>()});
-	
+	if (!(*config).at("UI").at("disableSplash").as<bool>())
+		registry.emplace<UI::SplashScreen>(registry.view<UI::UIManager>().front(), UI::SplashScreen{ (*config).at("UI").at("splashDuration").as<float>(), (*config).at("UI").at("fadeDuration").as<float>() });
+
 	registry.emplace<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
 	do {

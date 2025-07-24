@@ -16,6 +16,7 @@ namespace GAME
 	{
 		if (auto* sh = reg.try_get<Shield>(player); sh && sh->hitsLeft > 0) {
 			--sh->hitsLeft;
+			AUDIO::AudioSystem::PlaySFX("shieldDeflection");
 			if (sh->hitsLeft == 0) {
 				if (sh->visual != entt::null && reg.valid(sh->visual))
 					reg.destroy(sh->visual);        // remove shield mesh
@@ -26,6 +27,8 @@ namespace GAME
 
 		// no shield (or shield spent) – hurt player
 		--reg.get<Health>(player).health;
+		reg.get<Player>(player).upgradeCount = 0;
+		AUDIO::AudioSystem::PlaySFX("playerDamage");
 	}
 
 	void UpdateClampToScreen(entt::registry& registry, float marginOffset = 23.f)
@@ -176,7 +179,7 @@ namespace GAME
 				{
 					if (auto* o = reg.try_get<BulletOwner>(a))
 						if (o->owner == b || !reg.any_of<Player>(o->owner)) return;
-
+					AUDIO::AudioSystem::PlaySFX("bossDamage");
 					--reg.get<Health>(b).health;
 					reg.emplace<Invulnerability>(b,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("EnemyBoss_Station")

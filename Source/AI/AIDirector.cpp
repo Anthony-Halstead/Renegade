@@ -352,7 +352,7 @@ namespace AI
 			return;
 
 		auto& hpComp = R.get<GAME::Health>(boss);
-		if (hpComp.health > 2)
+		if (hpComp.health > 50)
 			return;
 
 		auto& spawnK = R.get<SpawnKamikazeEnemy>(boss);
@@ -360,7 +360,10 @@ namespace AI
 		if (spawnK.spawnTimer > 0.f)
 			return;
 
-		spawnK.spawnTimer = 3.0f;
+		if (hpComp.health > 20)
+			spawnK.spawnTimer = 5.0f;
+		else
+			spawnK.spawnTimer = 3.0f;
 
 		const GW::MATH::GVECTORF bossPos = R.get<GAME::Transform>(boss).matrix.row4;
 

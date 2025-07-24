@@ -141,6 +141,7 @@ namespace AI
 				flockRadius });
 
 			registry.emplace<GAME::Enemy>(e);
+			registry.emplace<GAME::EnemyTitle>(e, "Swarm");
 			registry.emplace<GAME::Health>(e, eHealth);
 			GVECTORF offset = RandomInsideDiscXZ(spawnRadius);
 

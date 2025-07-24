@@ -11,7 +11,6 @@ namespace Damage
 	{
 		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
 
-		// Create damaging radius and apply damage to all entities within range
 		entt::entity explosion = reg.create();
 		reg.emplace<AI::Explosion>(explosion);
 
@@ -34,6 +33,7 @@ namespace Damage
 		std::shared_ptr<const GameConfig> config = reg.ctx().get<UTIL::Config>().gameConfig;
 		auto wView = reg.view<APP::Window>();
 		if (wView.empty()) return;
+
 		const auto& window = wView.get<APP::Window>(*wView.begin());
 
 		float halfWidth = static_cast<float>(window.width) / 23.f;
@@ -44,7 +44,7 @@ namespace Damage
 		float minZ = -halfHeight;
 		float maxZ = halfHeight;
 
-		GW::MATH::GVECTORF BR{ maxX,0.0f,minZ,0.0f };
+		GW::MATH::GVECTORF BR{ maxX,0.0f,maxZ,0.0f };
 
 		GW::MATH::GVECTORF brDir;
 		GW::MATH::GVector::NormalizeF(BR, brDir);

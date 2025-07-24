@@ -8,7 +8,6 @@
 #include <algorithm>
 #include "../GAME/DamageTypes.h"
 
-
 namespace AI
 {
 	//FLOCK--------------------
@@ -54,6 +53,7 @@ namespace AI
 						  0.f };
 		}
 	}
+
 	GW::MATH::GVECTORF CalculateAlignment(const GW::MATH::GVECTORF& avgFwd, const BoidStats& stats, float strength)
 	{
 		using namespace GW::MATH;
@@ -67,6 +67,7 @@ namespace AI
 		GVector::ScaleF(vec, strength, vec);
 		return vec;
 	}
+
 	GW::MATH::GVECTORF CalculateCohesion(const GW::MATH::GVECTORF& avgPos, const GW::MATH::GVECTORF& pos, float flockRadius, float strength)
 	{
 		using namespace GW::MATH;
@@ -80,6 +81,7 @@ namespace AI
 		GVector::ScaleF(vec, strength, vec);
 		return vec;
 	}
+
 	GW::MATH::GVECTORF CalculateSeparation(entt::registry& registry, entt::entity self, float safeRadius, float strength)
 	{
 		using namespace GW::MATH;
@@ -112,6 +114,7 @@ namespace AI
 		GVector::ScaleF(sum, strength, sum);
 		return sum;
 	}
+
 	GW::MATH::GVECTORF CalculateSeek(const GW::MATH::GVECTORF& pos, const GW::MATH::GVECTORF& goal, float maxSpeed, float strength)
 	{
 		using namespace GW::MATH;
@@ -126,6 +129,7 @@ namespace AI
 		GVector::ScaleF(vec, strength, vec);
 		return vec;
 	}
+
 	void ApplySteering(GAME::Velocity& vel, const GW::MATH::GVECTORF& steer, float maxSpeed, float dt)
 	{
 		using namespace GW::MATH;
@@ -143,6 +147,7 @@ namespace AI
 			GVector::ScaleF(vel.vec, maxSpeed, vel.vec);
 		}
 	}
+
 	void UpdateFlock(entt::registry& registry)
 	{
 		auto view = registry.view<FlockMember, GAME::Transform, GAME::Velocity, BoidStats>();
@@ -174,6 +179,7 @@ namespace AI
 			ApplySteering(V, steer, stats.maxSpeed, dt);
 		}
 	}
+
 	void UpdateFlockGoal(entt::registry& registry)
 	{
 		using namespace GW::MATH;
@@ -271,6 +277,7 @@ namespace AI
 			}
 		}
 	}
+
 	void WaveSpawningBehavior(entt::registry& registry, entt::entity entity, float deltaTime)
 	{
 		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
@@ -285,6 +292,7 @@ namespace AI
 			SpawnWave(registry, AI::RandomFormationType(), 8, bossPos, GW::MATH::GVECTORF{ 0,-2,0,1 }, "Enemy2", 10);
 		}
 	}
+
 	void MineBehavior(entt::registry& R, entt::entity boss, float dt)
 	{
 		if (!R.any_of<MineDroneVolleyCooldown>(boss))
@@ -303,6 +311,7 @@ namespace AI
 		for (int i = 0; i < count; ++i)
 			SpawnMineDrone(R, bossT.row4);
 	}
+
 	void SpinningDronesBehavior(entt::registry& registry, entt::entity entity, float deltaTime)
 	{
 		auto dronesView = registry.view<AI::SpinningDrone>();
@@ -319,6 +328,7 @@ namespace AI
 			}
 		}
 	}
+
 	void LazerSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
 	{
 		if (!R.any_of<LazerCooldown>(boss))
@@ -333,7 +343,9 @@ namespace AI
 		const GW::MATH::GVECTORF bossPos = R.get<GAME::Transform>(boss).matrix.row4;
 
 		Damage::EnemyLazerAttack(R, boss, bossPos);
+		AUDIO::AudioSystem::PlaySFX("laser", bossPos);
 	}
+
 	void KamikazeSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
 	{
 		if (!R.any_of<SpawnKamikazeEnemy, GAME::Health>(boss))
@@ -358,6 +370,7 @@ namespace AI
 
 		SpawnKamikaze(R, bossPos);
 	}
+
 	void FlockSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
 	{
 
@@ -383,6 +396,7 @@ namespace AI
 		const GW::MATH::GVECTORF bossPos = R.get<GAME::Transform>(boss).matrix.row4;
 		SpawnFlock(R, 20, bossPos);
 	}
+
 	void UpdateMineDrones(entt::registry& R)
 	{
 		entt::basic_view players = R.view<GAME::Player, GAME::Transform>();
@@ -429,6 +443,7 @@ namespace AI
 			}
 		}
 	}
+
 	void UpdateSpinningDrones(entt::registry& registry) {
 		auto view = registry.view<AI::SpinningDrone, AI::SpinningDroneSettings, GAME::Transform, GAME::Velocity>();
 		float deltaTime = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
@@ -480,6 +495,7 @@ namespace AI
 			}
 		}
 	}
+
 	void OrbSpawnBehavior(entt::registry& R, entt::entity boss, float dt)
 	{
 		if (!R.any_of<OrbAttackCooldown>(boss)) {
@@ -494,6 +510,7 @@ namespace AI
 
 		cd.timer = cd.cooldown;
 	}
+
 	void UpdateBossOneBehavior(entt::registry& R, entt::entity boss)
 	{
 		if (!R.valid(boss) || !R.all_of<GAME::Health, GAME::SpawnEnemies>(boss))
@@ -512,6 +529,7 @@ namespace AI
 		MineBehavior(R, boss, dt);
 		KamikazeSpawnBehavior(R, boss, dt);
 	}
+
 	void UpdateBossTwoBehavior(entt::registry& registry, entt::entity entity)
 	{
 		if (!registry.valid(entity) ||
@@ -540,7 +558,7 @@ namespace AI
 		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
 
 		const float dt = static_cast<float>(registry.ctx().get<UTIL::DeltaTime>().dtSec);
-
+		auto& bossTransform = registry.get<GAME::Transform>(entity);
 		if (newFan || fan.attackTimer <= 0.f)
 			fan.attackTimer = fan.attackCooldown;
 
@@ -612,6 +630,7 @@ namespace AI
 			if (fan.spinningUp) {
 				fan.spinSpeed += fan.spinUpRate * dt;
 				if (fan.spinSpeed >= fan.maxSpinSpeed) {
+					AUDIO::AudioSystem::PlaySFX("arcSpin", bossTransform.matrix.row4, 1.0f, 300.0f);
 					fan.spinSpeed = fan.maxSpinSpeed;
 					fan.spinningUp = false;
 					fan.atMaxSpin = true;
@@ -654,12 +673,13 @@ namespace AI
 			break;
 		}
 
-		auto& bossTransform = registry.get<GAME::Transform>(entity);
+
 		UTIL::RotateContinuous(bossTransform, dt * fan.spinSpeed, 'Y');
 
 		if (bossState.state == AI::BossState::ArcAttack)
 			ArcAttackBehavior(registry, entity, fan, dt);
 	}
+
 	void UpdateBossThreeBehavior(entt::registry& registry, entt::entity& entity)
 	{
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
@@ -909,6 +929,7 @@ namespace AI
 
 				if (hp.health <= 0)
 				{
+					AUDIO::AudioSystem::PlaySFX("enemyDeath");
 					registry.emplace<GAME::Destroy>(ent);
 					registry.remove<GAME::Enemy>(ent);
 				}
@@ -919,6 +940,7 @@ namespace AI
 				auto& hp = registry.get<GAME::Health>(bossEntity);
 				if (hp.health <= 0)
 				{
+					AUDIO::AudioSystem::PlaySFX("bossExplode");
 					registry.emplace<GAME::Destroy>(bossEntity);
 					registry.remove<GAME::SpawnEnemies>(bossEntity);
 					registry.remove<GAME::Enemy_Boss>(bossEntity);
@@ -979,7 +1001,7 @@ namespace AI
 			auto& growth = explosions.get<AI::ExplosionGrowth>(ex);
 			const float explosionDamage = (*config).at("Explosion").at("damage").as<float>();
 			bool reached = UTIL::ScaleTowards(transform, growth.targetScale, growth.growthRate);
-
+			AUDIO::AudioSystem::PlaySFX("selfExplode", transform.matrix.row4);
 			if (reached)
 			{
 				registry.emplace_or_replace<GAME::Destroy>(ex);
@@ -1024,8 +1046,10 @@ namespace AI
 
 			registry.emplace<GAME::Velocity>(e, GAME::Velocity{ velScaled });
 			registry.emplace<AI::OrbLifetime>(e, AI::OrbLifetime{ 6.f });
+			AUDIO::AudioSystem::PlaySFX("orbAttack", T.matrix.row4, 1.0f, 300.0f);
 		}
 	}
+
 	void UpdateOrbLifetime(entt::registry& registry)
 	{
 		const double dt = registry.ctx().get<UTIL::DeltaTime>().dtSec;
@@ -1039,6 +1063,7 @@ namespace AI
 				registry.emplace_or_replace<GAME::Destroy>(e);
 		}
 	}
+
 	void UpdateKamikazeEnemy(entt::registry& registry)
 	{
 
@@ -1087,8 +1112,7 @@ namespace AI
 		}
 	}
 
-	void UpdateLazerAttack(entt::registry& registry)
-	{
+	void UpdateLazerAttack(entt::registry& registry) {
 
 		entt::basic_view lazerView = registry.view<AI::LazerSweep, GAME::Transform>();
 
@@ -1098,9 +1122,11 @@ namespace AI
 		{
 			auto& lazerTransform = lazerView.get<GAME::Transform>(entity);
 			auto& lazerSweep = lazerView.get<AI::LazerSweep>(entity);
-			float LENGTH_SCALE = 250.0f;
+			float LENGTH_SCALE = 150.0f;
 			float WIDTH_SCALE = 40.0f;
+
 			UTIL::RotateTowards(lazerTransform, lazerSweep.pointB, G_DEGREE_TO_RADIAN_F(90) * dt);
+
 			GW::MATH::GVector::ScaleF(lazerTransform.matrix.row3, LENGTH_SCALE, lazerTransform.matrix.row3);
 			GW::MATH::GVector::ScaleF(lazerTransform.matrix.row1, WIDTH_SCALE, lazerTransform.matrix.row1);
 

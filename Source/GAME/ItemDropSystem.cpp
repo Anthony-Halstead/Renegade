@@ -76,62 +76,72 @@ void GAME::HandlePickup(entt::registry& reg, GVECTORF spawnPos)
 /* ───────── per-frame: animate, despawn, collect, apply effects ───────── */
 void GAME::UpdatePickups(entt::registry& r, entt::entity /*unused*/)
 {
-    /* cfg */
-    auto mView = r.view<PickupManager>();
-    if (mView.begin() == mView.end()) return;
-    const auto& cfg = mView.get<PickupManager>(*mView.begin()).itemDropConfig;
+	/* cfg */
+	auto mView = r.view<PickupManager>();
+	if (mView.begin() == mView.end()) return;
+	const auto& cfg = mView.get<PickupManager>(*mView.begin()).itemDropConfig;
 
-    const float dt = static_cast<float>(r.ctx().get<UTIL::DeltaTime>().dtSec);
-    const float bobAmp = 0.5f;
-    const float bobRate = 2.0f;
-    const float collectR = 1.5f;
+	const float dt = static_cast<float>(r.ctx().get<UTIL::DeltaTime>().dtSec);
+	const float bobAmp = 0.5f;
+	const float bobRate = 2.0f;
+	const float collectR = 1.5f;
 
-    /* player */
-    auto pView = r.view<Player, Transform>();
-    if (pView.begin() == pView.end()) return;
-    entt::entity player = *pView.begin();
-    const GVECTORF     playerPos = pView.get<Transform>(player).matrix.row4;
+	/* player */
+	auto pView = r.view<Player, Transform>();
+	if (pView.begin() == pView.end()) return;
+	entt::entity player = *pView.begin();
+	GAME::Player& data = r.get<GAME::Player>(player);
+	const GVECTORF playerPos = pView.get<Transform>(player).matrix.row4;
 
-    /* each drop */
-    auto view = r.view<ItemPickup, PickupVelocity, PickupAnim, Transform>();
-    for (auto e : view)
-    {
-        auto& vel = view.get<PickupVelocity>(e);
-        auto& tf = view.get<Transform>(e);
-        auto& anim = view.get<PickupAnim>(e);
+	/* each drop */
+	auto view = r.view<ItemPickup, PickupVelocity, PickupAnim, Transform>(entt::exclude<Destroy>);
+	for (auto e : view)
+	{
+		auto& vel = view.get<PickupVelocity>(e);
+		auto& tf = view.get<Transform>(e);
+		auto& anim = view.get<PickupAnim>(e);
 
-        /* fall */
-        tf.matrix.row4.z += vel.zPerSecond * dt;
-        if (tf.matrix.row4.z < cfg.despawnZ) { r.destroy(e); continue; }
+		/* fall */
+		tf.matrix.row4.z += vel.zPerSecond * dt;
+		if (tf.matrix.row4.z < cfg.despawnZ) { r.destroy(e); continue; }
 
-        /* check radius for pick-up */
-        GVECTORF d;  GVector::SubtractVectorF(playerPos, tf.matrix.row4, d);
-        float d2;    GVector::DotF(d, d, d2);
-        if (d2 < collectR * collectR)
-        {
-            AUDIO::AudioSystem::PlaySFX("pickup", playerPos);
+		/* check radius for pick-up */
+		GVECTORF d;
+		GVector::SubtractVectorF(playerPos, tf.matrix.row4, d);
+		float d2;
+		GVector::DotF(d, d, d2);
+		if (d2 < collectR * collectR)
+		{
 
-            switch (view.get<ItemPickup>(e).type)
-            {
-            case PickupType::Ammo:   UpgradeWeapon(r, player); break;
-            case PickupType::Shield:
-            {
-                /* fetch config */
-                auto sView = r.view<ShieldManager>();
-                const auto& sCfg = sView.get<ShieldManager>(*sView.begin()).cfg;
+			switch (view.get<ItemPickup>(e).type)
+			{
+			case PickupType::Ammo:
+			{
+				data.upgradeCount++;
+				data.upgradeCount = std::clamp(data.upgradeCount, 0, data.maxUpgrade);
+				AUDIO::AudioSystem::PlaySFX("ammoPickup", playerPos);
+				//  UpgradeWeapon(r, player);
+				break;
+			}
+			case PickupType::Shield:
+			{
+				/* fetch config */
+				auto sView = r.view<ShieldManager>();
+				const auto& sCfg = sView.get<ShieldManager>(*sView.begin()).cfg;
 
-                /* add / replace Shield on the player */
-                Shield sh;
-                sh.hitsLeft = sCfg.hits;           // ← same as before
+				/* add / replace Shield on the player */
+				Shield sh;
+				sh.hitsLeft = sCfg.hits;           // ← same as before
 
-                /* create the ring mesh, but don’t try to store a return value */
-                if (!sCfg.mesh.empty())
-                    UTIL::CreateDynamicObjects(r, player, sCfg.mesh);
+				/* create the ring mesh, but don’t try to store a return value */
+				if (!sCfg.mesh.empty())
+					UTIL::CreateDynamicObjects(r, player, sCfg.mesh);
+				AUDIO::AudioSystem::PlaySFX("armorPickup", playerPos);
+				r.emplace_or_replace<Shield>(player, sh);
+				break;
+			}
 
-                r.emplace_or_replace<Shield>(player, sh);
-                break;
-            }
-			case PickupType::Health:
+			default:
 			{
 				auto* hp = r.try_get<Health>(player);
 				if (hp)
@@ -143,29 +153,28 @@ void GAME::UpdatePickups(entt::registry& r, entt::entity /*unused*/)
 				{
 					r.emplace<Health>(player, Health{ 1, 1 }); // create new health
 				}
+				AUDIO::AudioSystem::PlaySFX("healthPickup", playerPos);
 				break;
 			}
+			}
 
-            default: break;
-            }
+			r.emplace_or_replace<Destroy>(e);
+			continue;
+		}
 
-            r.emplace_or_replace<Destroy>(e);
-            continue;
-        }
+		/* spin + bob */
+		anim.yaw += anim.spinRate * dt;
+		if (anim.yaw > 6.28318f) anim.yaw -= 6.28318f;
 
-        /* spin + bob */
-        anim.yaw += anim.spinRate * dt;
-        if (anim.yaw > 6.28318f) anim.yaw -= 6.28318f;
+		float bob = std::sinf(anim.bobPhase + bobRate * anim.yaw) * bobAmp;
+		float newY = anim.baseY + bob;
+		float x = tf.matrix.row4.x;
+		float z = tf.matrix.row4.z;
 
-        float bob = std::sinf(anim.bobPhase + bobRate * anim.yaw) * bobAmp;
-        float newY = anim.baseY + bob;
-        float x = tf.matrix.row4.x;
-        float z = tf.matrix.row4.z;
-
-        GMATRIXF rot;  GMatrix::RotationYawPitchRollF(anim.yaw, 0.f, 0.f, rot);
-        tf.matrix = rot;
-        tf.matrix.row4 = { x, newY, z, 1.f };
-    }
+		GMATRIXF rot;  GMatrix::RotationYawPitchRollF(anim.yaw, 0.f, 0.f, rot);
+		tf.matrix = rot;
+		tf.matrix.row4 = { x, newY, z, 1.f };
+	}
 }
 
 /* ──────────────────────── ECS wiring ──────────────────────── */

@@ -1,3 +1,5 @@
+#include "../UI/UIComponents.h"
+
 namespace APP
 {
 	//*** TAGS ***//
@@ -38,6 +40,25 @@ namespace APP
 		else if (registry.any_of<DRAW::VulkanRenderer>(entity)) {
 			// update the window's GVulkanSurface if it has one
 			registry.patch<DRAW::VulkanRenderer>(entity);
+		}
+	}
+
+	inline void CleanUpWindows(entt::registry& registry)
+	{
+		auto winView = registry.view<Window, WindowClosed>();
+		for (auto entity : winView)
+		{
+			// Clean up Vulkan and other graphics resources
+			if (registry.any_of<DRAW::VulkanRenderer>(entity)) {
+				registry.remove<DRAW::VulkanRenderer>(entity);
+			}
+			// Clean up UI
+			if (registry.any_of<UI::UIManager>(entity)) {
+				registry.remove<UI::UIManager>(entity);
+			}
+			// Destroy the window last
+			registry.remove<GW::SYSTEM::GWindow>(entity);
+			registry.remove<APP::Window>(entity);
 		}
 	}
 

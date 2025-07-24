@@ -9,6 +9,7 @@ namespace AUDIO
 	void Construct_AudioDevice(entt::registry& reg, entt::entity ent)
 	{
 		auto& device = reg.get<AudioDevice>(ent);
+
 		if (-device.engine.Create()) {
 			std::cerr << "Failed to init Gateware audio\n";
 			std::abort();
@@ -78,7 +79,8 @@ namespace AUDIO
 		// ---------------------
 		SoundLibrary sfxLibrary;
 
-		const std::vector<std::string> sfx2DKeys = { "menuClick", "pickup", "error", "confirm", "shoot" };
+		const std::vector<std::string> sfx2DKeys = { "menuClick", "drop","armorPickup", "healthPickup","ammoPickup","error", "confirm", "shoot", "laser","arcSpin"
+		, "selfExplode","finalBossArrival","shieldDeflection","bossExplode","enemyDeath","orbAttack","playerDamage","bossDamage" };
 		for (const auto& key : sfx2DKeys) {
 			try {
 				std::string path = (*config).at("SFX").at(key).as<std::string>();

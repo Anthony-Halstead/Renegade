@@ -131,6 +131,20 @@ void GAME::UpdatePickups(entt::registry& r, entt::entity /*unused*/)
                 r.emplace_or_replace<Shield>(player, sh);
                 break;
             }
+			case PickupType::Health:
+			{
+				auto* hp = r.try_get<Health>(player);
+				if (hp)
+				{
+					hp->health += 1;  // +1 health
+					if (hp->health > hp->maxHealth) hp->health = hp->maxHealth;
+				}
+				else
+				{
+					r.emplace<Health>(player, Health{ 1, 1 }); // create new health
+				}
+				break;
+			}
 
             default: break;
             }

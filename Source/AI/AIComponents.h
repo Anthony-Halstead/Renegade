@@ -26,7 +26,12 @@ namespace AI
 		float rotationSpeed;
 		float stoppingDistance;
 	};
-
+	struct BossThreeIntroState {
+		GW::MATH::GVECTORF targetPos;
+		bool sfxPlayed;
+		float speed;
+	};
+	struct BossThreeIntroDone {};
 	struct FlockMember {};
 
 	struct BoidStats

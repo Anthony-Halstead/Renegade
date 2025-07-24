@@ -676,7 +676,41 @@ namespace AI
 		if (bossState.state == AI::BossState::ArcAttack)
 			ArcAttackBehavior(registry, entity, fan, dt);
 	}
+	bool BossThreeIntro(entt::registry& reg, entt::entity e, float dt)
+	{
+		using namespace GAME;
+		using namespace GW::MATH;
 
+		if (reg.any_of<BossThreeIntroDone>(e))
+			return false;
+
+		auto* introPtr = reg.try_get<BossThreeIntroState>(e);
+		if (!introPtr) {
+			auto& tf = reg.get<Transform>(e);
+			GVECTORF target = tf.matrix.row4;
+			target.z -= 30.f;
+			reg.emplace<BossThreeIntroState>(e, BossThreeIntroState{ target, false, 5.f });
+			introPtr = reg.try_get<BossThreeIntroState>(e);
+		}
+
+		auto& intro = *introPtr;
+		auto& tf = reg.get<Transform>(e);
+
+		if (!intro.sfxPlayed) {
+			AUDIO::AudioSystem::PlaySFX("finalBossArrival", tf.matrix.row4);
+			intro.sfxPlayed = true;
+		}
+
+		const float step = intro.speed * dt;
+		const bool arrived = UTIL::MoveTowards(tf, intro.targetPos, step);
+
+		if (arrived) {
+			reg.remove<BossThreeIntroState>(e);
+			reg.emplace<BossThreeIntroDone>(e);
+			return false;
+		}
+		return true;
+	}
 	void UpdateBossThreeBehavior(entt::registry& registry, entt::entity& entity)
 	{
 		std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
@@ -690,6 +724,10 @@ namespace AI
 
 		auto& hp = registry.get<GAME::Health>(entity);
 		auto& spawn = registry.get<GAME::SpawnEnemies>(entity);
+
+		if (BossThreeIntro(registry, entity, dt))
+			return;
+
 
 		if (hp.health <= 0)
 			return;

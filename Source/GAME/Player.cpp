@@ -37,6 +37,8 @@ void Invulnerability(entt::registry& registry, entt::entity& entity, const float
 	}
 }
 
+
+
 void Shoot(entt::registry& registry, entt::entity& entity,
 	const float& deltaTime, const float& fireRate, UTIL::Input input) {
 
@@ -58,41 +60,125 @@ void Shoot(entt::registry& registry, entt::entity& entity,
 	if (isFiring == nullptr)
 	{
 		bool fired = 0;
-		GW::MATH::GVECTORF velocity = GW::MATH::GIdentityVectorF;
 
+		GW::MATH::GVECTORF forward = GW::MATH::GIdentityVectorF;
 		if (mouseLeftClickState + controllerRightTriggerState == 1.0f)
 		{
 			// Get player's forward direction
 			const auto& playerTransform = registry.get<GAME::Transform>(entity).matrix;
-			GW::MATH::GVECTORF forward = playerTransform.row3;
-
-			velocity = forward;
+			forward = playerTransform.row3;
 			fired = 1;
 		}
 		if (fired)
 		{
-			entt::entity bullet = registry.create();
-			registry.emplace<GAME::Bullet>(bullet, 25.0f);
-			registry.emplace<GAME::BulletOwner>(bullet, entity);
+
 			std::string bulletModel = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("model").as<std::string>();
 			float bulletSpeed = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("speed").as<float>();
+			float bulletLifetime = (*registry.ctx().get<UTIL::Config>().gameConfig).at("Bullet").at("lifetime").as<float>();
 
-			UTIL::CreateVelocity(registry, bullet, velocity, bulletSpeed);
-			UTIL::CreateTransform(registry, bullet, registry.get<GAME::Transform>(entity).matrix);
-			UTIL::CreateDynamicObjects(registry, bullet, bulletModel);
 
-			GAME::Firing& firing = registry.emplace<GAME::Firing>(entity);
-			firing.cooldown = fireRate;
+			const GW::MATH::GVECTORF WORLD_UP = { 0, 1, 0, 0 };
+			GW::MATH::GVECTORF right;
+			GW::MATH::GVector::CrossVector3F(WORLD_UP, forward, right);
+			GW::MATH::GVector::NormalizeF(right, right);
 
-			if (registry.valid(bullet)) {
-				if (registry.all_of<GAME::Transform>(bullet)) {
-					// Create a 3D SFX instance that follows the bullet
-					const auto& bulletTransform = registry.get<GAME::Transform>(bullet).matrix;
-					GW::MATH::GVECTORF bulletPos = bulletTransform.row4;
+			auto RotateYaw = [](const GW::MATH::GVECTORF& fwd,
+				const GW::MATH::GVECTORF& right,
+				float deg) -> GW::MATH::GVECTORF
+				{
+					const float rad = G_DEGREE_TO_RADIAN_F(deg);
+					float c = std::cos(rad), s = std::sin(rad);
+					GW::MATH::GVECTORF v1, v2, out;
+					GW::MATH::GVector::ScaleF(fwd, c, v1);
+					GW::MATH::GVector::ScaleF(right, s, v2);
+					GW::MATH::GVector::AddVectorF(v1, v2, out);
+					GW::MATH::GVector::NormalizeF(out, out);
+					return out;
+				};
 
-					AUDIO::AudioSystem::PlaySFX("shoot", bulletPos);
-				}
+
+			std::array<GW::MATH::GVECTORF, 8> dirs;
+			size_t n = 0;
+			GAME::Player data = registry.get<GAME::Player>(entity);
+
+			switch (data.upgradeCount)
+			{
+			case 0:
+			default:
+				dirs[0] = forward;
+				n = 1;
+				break;
+
+			case 1:
+				dirs[0] = RotateYaw(forward, right, -10.f);
+				dirs[1] = RotateYaw(forward, right, +10.f);
+				n = 2;
+				break;
+
+			case 2:
+				dirs[0] = forward;
+				dirs[1] = RotateYaw(forward, right, -90.f);
+				dirs[2] = RotateYaw(forward, right, 90.f);
+				n = 3;
+				break;
+
+			case 3:
+				dirs[0] = RotateYaw(forward, right, -15.f);
+				dirs[1] = RotateYaw(forward, right, -5.f);
+				dirs[2] = RotateYaw(forward, right, 5.f);
+				dirs[3] = RotateYaw(forward, right, 15.f);
+				n = 4;
+				break;
+
+			case 4:
+				dirs[0] = RotateYaw(forward, right, -90.f);
+				dirs[1] = RotateYaw(forward, right, -10.f);
+				dirs[2] = forward;
+				dirs[3] = RotateYaw(forward, right, 10.f);
+				dirs[4] = RotateYaw(forward, right, 90.f);
+				n = 5;
+				break;
+
+			case 5:
+				dirs[0] = RotateYaw(forward, right, 0.f);
+				dirs[1] = RotateYaw(forward, right, 45.f);
+				dirs[2] = RotateYaw(forward, right, 90.f);
+				dirs[3] = RotateYaw(forward, right, 135.f);
+				dirs[4] = RotateYaw(forward, right, 180.f);
+				dirs[5] = RotateYaw(forward, right, -135.f);
+				dirs[6] = RotateYaw(forward, right, -90.f);
+				dirs[7] = RotateYaw(forward, right, -45.f);
+				n = 8;
+				break;
 			}
+
+			for (size_t i = 0; i < n; ++i)
+			{
+				entt::entity bullet = registry.create();
+
+				registry.emplace<GAME::Bullet>(bullet, bulletLifetime);
+				registry.emplace<GAME::BulletOwner>(bullet, entity);
+
+				UTIL::CreateVelocity(registry, bullet, dirs[i], bulletSpeed);
+				UTIL::CreateTransform(registry, bullet, registry.get<GAME::Transform>(entity).matrix);
+				UTIL::CreateDynamicObjects(registry, bullet, bulletModel);
+				const auto& bulletTransform = registry.get<GAME::Transform>(bullet).matrix;
+				GW::MATH::GVECTORF bulletPos = bulletTransform.row4;
+
+				AUDIO::AudioSystem::PlaySFX("shoot", bulletPos, 1.0f, 300.0f);
+			}
+
+			registry.emplace<GAME::Firing>(entity).cooldown = fireRate;
+
+			//if (registry.valid(bullet)) {
+			//	if (registry.all_of<GAME::Transform>(bullet)) {
+			//		// Create a 3D SFX instance that follows the bullet
+			//		const auto& bulletTransform = registry.get<GAME::Transform>(bullet).matrix;
+			//		GW::MATH::GVECTORF bulletPos = bulletTransform.row4;
+
+			//		AUDIO::AudioSystem::PlaySFX("shoot", bulletPos);
+			//	}
+			//}
 
 		}
 	}

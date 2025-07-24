@@ -17,60 +17,60 @@ using namespace GW::MATH;
 /* ─────────────────────────── helpers ─────────────────────────── */
 static PickupType WeightedPick(const ItemDropConfig& cfg)
 {
-    const float total = cfg.weights[0] + cfg.weights[1] + cfg.weights[2];
-    float r = static_cast<float>(rand()) / RAND_MAX * total;
+	const float total = cfg.weights[0] + cfg.weights[1] + cfg.weights[2];
+	float r = static_cast<float>(rand()) / RAND_MAX * total;
 
-    if ((r -= cfg.weights[0]) < 0) return PickupType::Health;
-    if ((r -= cfg.weights[1]) < 0) return PickupType::Shield;
-    return PickupType::Ammo;
+	if ((r -= cfg.weights[0]) < 0) return PickupType::Health;
+	if ((r -= cfg.weights[1]) < 0) return PickupType::Shield;
+	return PickupType::Ammo;
 }
 
 /* ───────────── load [ItemDrops] → PickupManager once ──────────── */
 void GAME::ConstructConfig(entt::registry& reg, entt::entity e)
 {
-    const auto& ini = *reg.ctx().get<UTIL::Config>().gameConfig;
-    auto& cfg = reg.get<PickupManager>(e).itemDropConfig;
+	const auto& ini = *reg.ctx().get<UTIL::Config>().gameConfig;
+	auto& cfg = reg.get<PickupManager>(e).itemDropConfig;
 
-    cfg.dropChance = ini.at("ItemDrops").at("dropChance").as<float>();
-    cfg.weights[0] = ini.at("ItemDrops").at("weightHealth").as<float>();
-    cfg.weights[1] = ini.at("ItemDrops").at("weightShield").as<float>();
-    cfg.weights[2] = ini.at("ItemDrops").at("weightWeapon").as<float>();
-    cfg.fallSpeed = ini.at("ItemDrops").at("pickupFallSpeed").as<float>();
-    cfg.despawnZ = ini.at("ItemDrops").at("despawnZ").as<float>();
+	cfg.dropChance = ini.at("ItemDrops").at("dropChance").as<float>();
+	cfg.weights[0] = ini.at("ItemDrops").at("weightHealth").as<float>();
+	cfg.weights[1] = ini.at("ItemDrops").at("weightShield").as<float>();
+	cfg.weights[2] = ini.at("ItemDrops").at("weightWeapon").as<float>();
+	cfg.fallSpeed = ini.at("ItemDrops").at("pickupFallSpeed").as<float>();
+	cfg.despawnZ = ini.at("ItemDrops").at("despawnZ").as<float>();
 }
 
 /* ────────── called by enemy-death to put a pickup in the world ───────── */
 void GAME::HandlePickup(entt::registry& reg, GVECTORF spawnPos)
 {
-    auto mgrView = reg.view<PickupManager>();
-    if (mgrView.empty()) return;
-    const auto& cfg = mgrView.get<PickupManager>(*mgrView.begin()).itemDropConfig;
+	auto mgrView = reg.view<PickupManager>();
+	if (mgrView.empty()) return;
+	const auto& cfg = mgrView.get<PickupManager>(*mgrView.begin()).itemDropConfig;
 
-    if (static_cast<float>(rand()) / RAND_MAX > cfg.dropChance)
-        return;
+	if (static_cast<float>(rand()) / RAND_MAX > cfg.dropChance)
+		return;
 
-    entt::entity p = reg.create();
-    PickupType   typ = WeightedPick(cfg);
+	entt::entity p = reg.create();
+	PickupType   typ = WeightedPick(cfg);
 
-    reg.emplace<ItemPickup    >(p, ItemPickup{ typ });
-    reg.emplace<PickupVelocity>(p, PickupVelocity{ -cfg.fallSpeed });
+	reg.emplace<ItemPickup>(p, ItemPickup{ typ });
+	reg.emplace<PickupVelocity>(p, PickupVelocity{ -cfg.fallSpeed });
 
-    float phase = static_cast<float>(rand()) / RAND_MAX * 6.28318f;
-    reg.emplace<PickupAnim>(p, PickupAnim{ spawnPos.y, 1.f, 0.f, phase });
+	float phase = static_cast<float>(rand()) / RAND_MAX * 6.28318f;
+	reg.emplace<PickupAnim>(p, PickupAnim{ spawnPos.y, 1.f, 0.f, phase });
 
-    GMATRIXF M = GIdentityMatrixF;  M.row4 = spawnPos;
-    reg.emplace<Transform>(p, Transform{ M });
+	GMATRIXF M = GIdentityMatrixF;  M.row4 = spawnPos;
+	reg.emplace<Transform>(p, Transform{ M });
 
-    const char* key =
-        (typ == PickupType::Health) ? "modelHealth" :
-        (typ == PickupType::Shield) ? "modelShield" :
-        "modelWeapon";
+	const char* key =
+		(typ == PickupType::Health) ? "modelHealth" :
+		(typ == PickupType::Shield) ? "modelShield" :
+		"modelWeapon";
 
-    UTIL::CreateDynamicObjects(
-        reg, p,
-        reg.ctx().get<UTIL::Config>().gameConfig->at("ItemDrops").at(key).as<std::string>());
+	UTIL::CreateDynamicObjects(
+		reg, p,
+		reg.ctx().get<UTIL::Config>().gameConfig->at("ItemDrops").at(key).as<std::string>());
 
-    AUDIO::AudioSystem::PlaySFX("pickup", spawnPos);
+	AUDIO::AudioSystem::PlaySFX("drop", spawnPos);
 }
 
 /* ───────── per-frame: animate, despawn, collect, apply effects ───────── */
@@ -171,10 +171,10 @@ void GAME::UpdatePickups(entt::registry& r, entt::entity /*unused*/)
 /* ──────────────────────── ECS wiring ──────────────────────── */
 CONNECT_COMPONENT_LOGIC()
 {
-    registry.on_construct<PickupManager>()
-        .connect<&ConstructConfig>();
+	registry.on_construct<PickupManager>()
+		.connect<&ConstructConfig>();
 
-    /* run every frame via GameManager’s update */
-    registry.on_update<GameManager>()
-        .connect<&UpdatePickups>();
+	/* run every frame via GameManager’s update */
+	registry.on_update<GameManager>()
+		.connect<&UpdatePickups>();
 }

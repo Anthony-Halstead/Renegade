@@ -4,7 +4,10 @@
 namespace GAME
 {
 	///*** Tags ***///
-	struct Player {};
+	struct Player {
+		int upgradeCount = 0;
+		int maxUpgrade = 5;
+	};
 	struct Enemy_Boss {};
 	struct Enemy {};
 	struct Bullet { float lifetime = 5.0f; };

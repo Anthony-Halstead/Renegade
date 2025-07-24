@@ -43,7 +43,7 @@ namespace AUDIO {
 			return true;
 		}
 
-		static void PlaySFX(const std::string& key, GW::MATH::GVECTORF pos = GW::MATH::GIdentityVectorF, float minRadius = 1.0f, float maxRadius = 1000.0f) {
+		static void PlaySFX(const std::string& key, GW::MATH::GVECTORF pos = GW::MATH::GVECTORF{ 0,1,0,1 }, float minRadius = 1.0f, float maxRadius = 1000.0f) {
 			if (!registry || !registry->valid(entity)) return;
 
 			auto& library = registry->get<SoundLibrary>(entity);
@@ -54,6 +54,7 @@ namespace AUDIO {
 			it->second.UpdateAttenuation(minRadius, maxRadius, attenuation);
 			it->second.Play();
 		}
+
 
 		static void SetPlaybackMode(PlaybackMode mode) {
 			if (!registry || !registry->valid(entity)) return;

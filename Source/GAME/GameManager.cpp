@@ -14,8 +14,10 @@ namespace GAME
 	// Helper functions
 	inline void ApplyPlayerDamage(entt::registry& reg, entt::entity player)
 	{
+		reg.get<Player>(player).upgradeCount = 0;
 		if (auto* sh = reg.try_get<Shield>(player); sh && sh->hitsLeft > 0) {
 			--sh->hitsLeft;
+			AUDIO::AudioSystem::PlaySFX("shieldDeflection");
 			if (sh->hitsLeft == 0) {
 				if (sh->visual != entt::null && reg.valid(sh->visual))
 					reg.destroy(sh->visual);        // remove shield mesh
@@ -26,6 +28,8 @@ namespace GAME
 
 		// no shield (or shield spent) – hurt player
 		--reg.get<Health>(player).health;
+
+		AUDIO::AudioSystem::PlaySFX("playerDamage");
 	}
 
 	void UpdateClampToScreen(entt::registry& registry, float marginOffset = 23.f)
@@ -176,7 +180,7 @@ namespace GAME
 				{
 					if (auto* o = reg.try_get<BulletOwner>(a))
 						if (o->owner == b || !reg.any_of<Player>(o->owner)) return;
-
+					AUDIO::AudioSystem::PlaySFX("bossDamage");
 					--reg.get<Health>(b).health;
 					reg.emplace<Invulnerability>(b,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("EnemyBoss_Station")
@@ -222,8 +226,7 @@ namespace GAME
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
-					std::cout << "Player's current health: "
-						<< reg.get<Health>(a).health << '\n';
+
 					return;
 				}
 
@@ -242,8 +245,7 @@ namespace GAME
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
-					std::cout << "Player's current health: "
-						<< reg.get<Health>(a).health << '\n';
+
 					return;
 				}
 
@@ -263,8 +265,7 @@ namespace GAME
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
 					reg.emplace_or_replace<Destroy>(b);
-					std::cout << "Player's current health: "
-						<< reg.get<Health>(a).health << '\n';
+
 					return;
 				}
 
@@ -272,17 +273,17 @@ namespace GAME
 				if (reg.all_of<Player>(a) && reg.all_of<AI::LazerSweep>(b) &&
 					!reg.any_of<Invulnerability>(a))
 				{
+					ApplyPlayerDamage(reg, a);
 					if (input.connectedControllers > 0)
 					{
 						input.gamePads.StartVibration(0, 0.0f, 0.7f, 1.0f);
 					}
 
-					--reg.get<Health>(a).health;
+					//--reg.get<Health>(a).health;
 					reg.emplace<Invulnerability>(a,
 						reg.ctx().get<UTIL::Config>().gameConfig->at("Player")
 						.at("invulnPeriod").as<float>());
-					std::cout << "Player's current health: "
-						<< reg.get<Health>(a).health << '\n';
+
 					return;
 				}
 			};

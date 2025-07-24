@@ -141,6 +141,7 @@ namespace AI
 				flockRadius });
 
 			registry.emplace<GAME::Enemy>(e);
+			registry.emplace<GAME::EnemyTitle>(e, "Swarm");
 			registry.emplace<GAME::Health>(e, eHealth);
 			GVECTORF offset = RandomInsideDiscXZ(spawnRadius);
 
@@ -236,7 +237,7 @@ namespace AI
 		GAME::Transform finalBossTransform{ GW::MATH::GIdentityMatrixF };
 		float finalBossScale = (*config).at("EnemyBoss_RedRocket").at("scale").as<float>();
 		UTIL::Scale(finalBossTransform, finalBossScale);
-		finalBossTransform.matrix.row4.z = 30.0f;
+		finalBossTransform.matrix.row4.z = 70.0f;
 		R.emplace<GAME::Health>(finalBoss, finalBossHealth);
 		R.emplace<GAME::Transform>(finalBoss, finalBossTransform);
 		R.emplace<GAME::SpawnEnemies>(finalBoss, 5.0f);

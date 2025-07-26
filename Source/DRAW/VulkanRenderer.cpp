@@ -66,11 +66,15 @@ namespace DRAW
 					std::string fullPath = std::string(TEXTURE_DIR) + fname;
 					std::ifstream f(fullPath);
 					if (!f.good()) {
+#if NDEBUG
 						std::cout << "Texture file [" << fullPath << "] does NOT exist!\n";
+#endif
 						fileToIdx[fname] = -1;
 						return;
 					}
+#if NDEBUG
 					std::cout << "Texture file [" << fullPath << "] FOUND!\n";
+#endif
 					TextureData texData{};
 					UploadTextureToGPU(vkRenderer.vlkSurface, fullPath.c_str(), texData.memory, texData.image, texData.imageView);
 					texVec.push_back(texData);

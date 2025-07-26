@@ -46,9 +46,10 @@ public:
 
             DestringifyScores(res->body, scoreArray);
 
-            for (int i = 0; i < SB::NUM_SCORES; i++) {
-                std::cout << "Score #" << i << " = " << scoreArray[i] << std::endl;
-            }
+			/// Debug
+            //for (int i = 0; i < SB::NUM_SCORES; i++) {
+            //    std::cout << "Score #" << i << " = " << scoreArray[i] << std::endl;
+            //}
         }
         else {
             std::cout << "Error: " << res.error() << std::endl;
@@ -70,13 +71,13 @@ public:
 
         auto res = httplibClient->Get(url);
 
-        if (res && res->status == 200) {
-            std::cout << res->body << std::endl;
-        }
-        else {
-            std::cout << "Error: " << res.error() << std::endl;
-            return 0;
-        }
+        //if (res && res->status == 200) {
+         //   std::cout << res->body << std::endl;
+        //}
+        //else {
+        //    std::cout << "Error: " << res.error() << std::endl;
+         //   return 0;
+       // }
 
         return 1;
     }

@@ -896,7 +896,8 @@ namespace AI
 			if (invuln.invulnPeriod <= 0.0f)
 			{
 				registry.remove<GAME::Invulnerability>(ent);
-				std::cout << "Enemy Boss is no longer invulnerable." << std::endl;
+				/// debug
+				// std::cout << "Enemy Boss is no longer invulnerable." << std::endl;
 			}
 		}
 	}
@@ -982,7 +983,8 @@ namespace AI
 					registry.emplace<GAME::Destroy>(bossEntity);
 					registry.remove<GAME::SpawnEnemies>(bossEntity);
 					registry.remove<GAME::Enemy_Boss>(bossEntity);
-					std::cout << "Enemy Boss defeated!" << std::endl;
+					/// Debug
+					// std::cout << "Enemy Boss defeated!" << std::endl;
 				}
 			}
 		}
@@ -1198,7 +1200,8 @@ namespace AI
 			{
 				// All bosses defeated, trigger game over
 				registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
-				std::cout << "You win, good job!" << std::endl;
+				/// Debug
+				// std::cout << "You win, good job!" << std::endl;
 			}
 		}
 	}

@@ -20,7 +20,8 @@ namespace GAME
 
 		if (!sbClient.GetScores(scoreBoard.scores)) 
 		{
-			std::cout << "SCORE RETRIEVAL ERROR" << std::endl;
+			/// Debug
+			// std::cout << "SCORE RETRIEVAL ERROR" << std::endl;
 		}
 
 		entt::basic_view stateManager = registry.view<StateManager>();
@@ -82,11 +83,13 @@ namespace GAME
 				}
 			}
 			if (!sbClient.SaveScores(pastScores.scores)) {
-				std::cout << "SCORE SAVE ERROR" << std::endl;
+				/// Debug
+				// std::cout << "SCORE SAVE ERROR" << std::endl;
 			}
 		}
 		else {
-			std::cout << "No Score component found to save high scores." << std::endl;
+			/// Debug
+			// std::cout << "No Score component found to save high scores." << std::endl;
 		}
 	}
 
@@ -98,8 +101,8 @@ namespace GAME
 			if (!registry.any_of<ScoreDisplayed>(ent)) {
 				auto& scoreComponent = registry.get<Score>(ent);
 				/// Debug
-				std::cout << "Final Score: " << scoreComponent.score << std::endl;
-				std::cout << "High Score: " << scoreComponent.highScore << std::endl;
+				// std::cout << "Final Score: " << scoreComponent.score << std::endl;
+				// std::cout << "High Score: " << scoreComponent.highScore << std::endl;
 				///
 				SaveHighScores(registry);
 				registry.emplace<ScoreDisplayed>(ent);
@@ -136,7 +139,7 @@ namespace GAME
 			if (registry.get<Health>(ent).health < registry.get<PriorFrameData>(ent).pHealth) {
 				// communicate to UI or other systems that player has been hit
 				/// Debug
-				std::cout << "Player has been hit! Current health: " << registry.get<Health>(ent).health << " down from: " << registry.get<PriorFrameData>(ent).pHealth << std::endl;
+				// std::cout << "Player has been hit! Current health: " << registry.get<Health>(ent).health << " down from: " << registry.get<PriorFrameData>(ent).pHealth << std::endl;
 				///
 			}
 			// update prior frame data to reflect current frame
@@ -161,7 +164,7 @@ namespace GAME
 				}
 				else {
 					/// Debug
-					std::cout << "Boss has been hit, but no name was provided, no score awarded " << std::endl;
+					// std::cout << "Boss has been hit, but no name was provided, no score awarded " << std::endl;
 					///
 				}
 			}
@@ -173,7 +176,7 @@ namespace GAME
 				}
 				else {
 					/// Debug
-					std::cout << "Boss defeated, but no name was provided, no score awarded " << std::endl;
+					// std::cout << "Boss defeated, but no name was provided, no score awarded " << std::endl;
 					///
 				}
 			}
@@ -197,7 +200,7 @@ namespace GAME
 				}
 				else {
 					/// Debug
-					std::cout << "Enemy defeated, but no name was provided, no score awarded " << std::endl;
+					// std::cout << "Enemy defeated, but no name was provided, no score awarded " << std::endl;
 					///
 				}
 			}

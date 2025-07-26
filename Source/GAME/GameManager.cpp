@@ -341,7 +341,7 @@ namespace GAME
 		{
 			registry.emplace_or_replace<GAME::GameOver>(registry.view<GAME::GameManager>().front(), GAME::GameOver{});
 			/// Debug
-			std::cout << "You lose, game over." << std::endl;
+			// std::cout << "You lose, game over." << std::endl;
 			///
 
 			AUDIO::AudioSystem::PlayMusicTrack("lose");

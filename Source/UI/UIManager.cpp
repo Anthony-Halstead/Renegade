@@ -2,27 +2,14 @@
 #include "Font.h"
 #include "BLIT_Font.h"
 #include "../DRAW/DrawComponents.h"
+#include "../DRAW/Utility/FileIntoString.h"
 #include "../APP/Window.hpp"
 #include "../GAME/GameComponents.h"
 #include "../UTIL/Utilities.h"
-#include "shaderc/shaderc.h" // needed for compiling shaders at runtime
-#ifdef _WIN32 // must use MT platform DLL libraries on windows
-#pragma comment(lib, "shaderc_combined.lib") 
-#endif
+#include "shaderc/shaderc.h"
 #include "Overlay.h"
 #include "UIComponents.h"
-#include "img/RENEGADE_TitleStart.h"
-#include "img/RENEGADE_TitleQuit.h"
-#include "img/RENEGADE_LoseRestart.h"
-#include "img/RENEGADE_LoseQuit.h"
-#include "img/RENEGADE_WinRestart.h"
-#include "img/RENEGADE_WinQuit.h"
-#include "img/RENEGADE_PauseContinue.h"
-#include "img/RENEGADE_PauseQuit.h"
-#include "img/SPLASH_EssentialGreensLogo.h"
-#include "img/SPLASH_GatewareLogo.h"
-#include "img/SPLASH_VulkanLogo.h"
-
+#include "UIAssets.h"
 
 namespace UI
 {
@@ -50,7 +37,7 @@ namespace UI
 	// Get gamepad state inputs
 	void GetGamepadState(entt::registry& registry, float& startBtn, float& leftStickY, float& upBtn, float& downBtn, float& sBtn) {
 		UTIL::Input input = registry.ctx().get<UTIL::Input>();
-		if (input.connectedControllers > 0) 
+		if (input.connectedControllers > 0)
 		{
 			input.gamePads.GetState(0, G_START_BTN, startBtn);
 			input.gamePads.GetState(0, G_LY_AXIS, leftStickY);
@@ -119,7 +106,7 @@ namespace UI
 
 	void DisplaySplashScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
 	{
-		auto& splashScreen = registry.get<UI::SplashScreen>(registry.view<UI::UIManager>().front()); 
+		auto& splashScreen = registry.get<UI::SplashScreen>(registry.view<UI::UIManager>().front());
 		auto& deltaTime = registry.ctx().get<UTIL::DeltaTime>().dtSec;
 
 		if (splashScreen.fadingIn)
@@ -130,7 +117,7 @@ namespace UI
 				splashScreen.fadeAlpha = 1.f;
 				splashScreen.fadingIn = false;
 			}
-		} 
+		}
 		else if (splashScreen.fadingOut)
 		{
 			splashScreen.fadeAlpha -= deltaTime / splashScreen.fadeDuration;
@@ -146,7 +133,7 @@ namespace UI
 					for (int i = 0; i < window.width * window.height; ++i) color_pix[i] = 0xFF000000;
 					registry.remove<UI::SplashScreen>(registry.view<UI::UIManager>().front());
 					return;
-				} 
+				}
 				splashScreen.fadingIn = true;
 			}
 		}
@@ -193,7 +180,7 @@ namespace UI
 
 	void DisplayTitleScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
 	{
-		// TODO: make this more versatile; definitely needs to be refactored later
+		// TODO: make this more versatile; maybe needs to be refactored later
 		if (registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
 			float startBtn, leftStickY, upBtn, downBtn, sBtn;
@@ -201,10 +188,11 @@ namespace UI
 
 			auto& title = registry.get<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
+			if (GetAsyncKeyState(0x26) & 0x8001 || leftStickY > 0 || upBtn)
 				title.start = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
+			else if (GetAsyncKeyState(0x28) & 0x8001 || leftStickY < 0 || downBtn)
 				title.start = 0;
+
 			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
 				if (title.start)
@@ -220,14 +208,6 @@ namespace UI
 		}
 	}
 
-	void DisplayWinLoseScreen_Helper(UI::WinLoseScreen& winLoseScreen, APP::Window& window, unsigned* color_pix, bool W)
-	{
-		const unsigned* img = W ? winLoseScreen.restart ? RENEGADE_WinRestart_pixels : RENEGADE_WinQuit_pixels : winLoseScreen.restart ? RENEGADE_LoseRestart_pixels : RENEGADE_LoseQuit_pixels;
-
-		for (int i = 0; i < window.width * window.height; ++i)
-			color_pix[i] = BGRAtoARGB(img[i]);
-	}
-
 	void DisplayWinLoseScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
 	{
 		if (registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()))
@@ -237,16 +217,19 @@ namespace UI
 			float startBtn, leftStickY, upBtn, downBtn, sBtn;
 			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
 
-			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
+
+			if (GetAsyncKeyState(0x26) & 0x8001 || leftStickY > 0 || upBtn)
 				winLoseScreen.restart = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
+			else if (GetAsyncKeyState(0x28) & 0x8001 || leftStickY < 0 || downBtn)
 				winLoseScreen.restart = 0;
+
 			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
 			{
-				// TODO: write restart logic
 				if (winLoseScreen.restart)
 				{
-					registry.emplace_or_replace<UI::TitleScreen>(registry.view<UI::UIManager>().front());
+					UTIL::ClearScene(registry);
+					UTIL::RestartScene(registry);
+
 					registry.remove<UI::WinLoseScreen>(registry.view<UI::UIManager>().front());
 				}
 				else
@@ -256,65 +239,67 @@ namespace UI
 				}
 			}
 
-			// loss
-			if (!registry.valid(registry.view<GAME::Player>().front()))
-			{
-				DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, false);
-			}
-			else
-			{
-				if (registry.any_of<GAME::Health>(registry.view<GAME::Player>().front()))
-				{
-					// loss
-					if (registry.get<GAME::Health>(registry.view<GAME::Player>().front()).health <= 0)
-						DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, false);
-					else // win
-						DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, true);
-				}
-				else
-				{
-					// if player has no health component, assume they lost
-					DisplayWinLoseScreen_Helper(winLoseScreen, window, color_pix, false);
-				}
-			}
+			const unsigned* img;
+
+			// win/lose check
+			if (registry.any_of<GAME::Health>(registry.view<GAME::Player>().front()))
+				img = registry.get<GAME::Health>(registry.view<GAME::Player>().front()).health <= 0 ? winLoseScreen.restart ? RENEGADE_LoseRestart_pixels : RENEGADE_LoseQuit_pixels : winLoseScreen.restart ? RENEGADE_WinRestart_pixels : RENEGADE_WinQuit_pixels;
+
+			for (int i = 0; i < window.width * window.height; ++i)
+				color_pix[i] = BGRAtoARGB(img[i]);
 		}
 	}
-	// TODO: fix bug with pressing esc multiple times: adds multiple pause screens(?)
+
 	void DisplayPauseScreen(entt::registry& registry, UIManager& ui, APP::Window& window, unsigned* color_pix)
 	{
 		if (!registry.any_of<UI::WinLoseScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()))
 		{
-
 			float startBtn, leftStickY, upBtn, downBtn, sBtn;
 			GetGamepadState(registry, startBtn, leftStickY, upBtn, downBtn, sBtn);
 
 			if (!registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
 			{
-				if (GetAsyncKeyState(VK_ESCAPE) & 0x01 || startBtn > 0)
+				if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 || startBtn)
 					registry.emplace_or_replace<UI::PauseScreen>(registry.view<UI::UIManager>().front());
 				return;
 			}
 			auto& pauseScreen = registry.get<UI::PauseScreen>(registry.view<UI::UIManager>().front());
 
-			if (GetAsyncKeyState(0x26) & 0x01 || leftStickY > 0 || upBtn)
+			if (GetAsyncKeyState(0x26) & 0x8001 || leftStickY > 0 || upBtn)
 				pauseScreen.pauseContinue = 1;
-			else if (GetAsyncKeyState(0x28) & 0x01 || leftStickY < 0 || downBtn)
+			else if (GetAsyncKeyState(0x28) & 0x8001 || leftStickY < 0 || downBtn)
 				pauseScreen.pauseContinue = 0;
-			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn > 0)
+
+			if (GetAsyncKeyState(VK_RETURN) & 0x01 || sBtn)
 			{
-				if (pauseScreen.pauseContinue)
-					registry.remove<UI::PauseScreen>(registry.view<UI::UIManager>().front());
-				else
+				if (!pauseScreen.pauseContinue)
 				{
-					registry.emplace_or_replace<UI::TitleScreen>(registry.view<UI::UIManager>().front());
-					registry.remove<UI::PauseScreen>(registry.view<UI::UIManager>().front());
+					UTIL::ClearScene(registry);
+					UTIL::RestartScene(registry);
+					registry.emplace<UI::TitleScreen>(registry.view<UI::UIManager>().front());
 				}
+				registry.remove<UI::PauseScreen>(registry.view<UI::UIManager>().front());
+				return;
 			}
 
 			const unsigned* img = pauseScreen.pauseContinue ? RENEGADE_PauseContinue_pixels : RENEGADE_PauseQuit_pixels;
 
-			for (int i = 0; i < window.width * window.height; ++i)
-				color_pix[i] = BGRAtoARGB(img[i]);
+			Rect r
+			{
+				259, 228,
+				505, 306,
+			};
+
+			Point2D p
+			{
+				window.width / 2 - r.width / 2,
+				window.height / 2 - r.height / 2,
+			};
+
+			BlockImageTransfer(r, p, RENEGADE_PauseContinue_width, img, color_pix, window.width, window.height);
+
+			//for (int i = 0; i < window.width * window.height; ++i)
+			//	color_pix[i] = BGRAtoARGB(img[i]);
 		}
 	}
 	void Construct_UI(entt::registry& registry, entt::entity entity)

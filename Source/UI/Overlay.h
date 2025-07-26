@@ -135,13 +135,11 @@ class Overlay
 	// compute the overlay scale and offset based on the present style flags
 	void ComputeOverlayScaleAndOffset(VkViewport& _viewport, VkRect2D& _scissor);
 
-	std::string ReadFileIntoString(const char* filePath);
-
 public:
 	// Constructor
 	// IMPORTANT: You must use GW::GRAPHICS::GRasterUpdateFlags to edit the present style
 	// By default it will place the overlay in the screen center with no scaling or interpolation
-	Overlay(unsigned int _width, unsigned int _height, 
+	Overlay(unsigned int _width, unsigned int _height,
 		GW::SYSTEM::GWindow _window, GW::GRAPHICS::GVulkanSurface _surface,
 		unsigned int _presentStyle);
 
@@ -216,26 +214,6 @@ void Overlay::CompileVertexShader(const shaderc_compiler_t& compiler, const shad
 	shaderc_result_release(result); // done
 }
 
-std::string Overlay::ReadFileIntoString(const char* filePath)
-{
-	std::string output;
-	unsigned int stringLength = 0;
-	GW::SYSTEM::GFile file;
-
-	file.Create();
-	file.GetFileSize(filePath, stringLength);
-
-	if (stringLength > 0 && +file.OpenBinaryRead(filePath))
-	{
-		output.resize(stringLength);
-		file.Read(&output[0], stringLength);
-	}
-	else
-		std::cout << "ERROR: File \"" << filePath << "\" Not Found!" << std::endl;
-
-	return output;
-}
-
 void Overlay::CompileFragmentShader(const shaderc_compiler_t& compiler, const shaderc_compile_options_t& options)
 {
 	// 100% Switch to using the fragment shader for the PBR model
@@ -261,7 +239,8 @@ void Overlay::CompileFragmentShader(const shaderc_compiler_t& compiler, const sh
 // Cleanup
 void Overlay::Cleanup()
 {
-	if (shutdown) {
+	if (shutdown)
+	{
 		// lock for synchronous writes
 		lock.LockSyncWrite();
 		// wait for the device to finish
@@ -281,7 +260,8 @@ void Overlay::Cleanup()
 		// destroy the vertex shader
 		vkDestroyShaderModule(device, vertexShader, nullptr);
 		// destroy the overlay images
-		for (auto& overlayImage : overlayImages) {
+		for (auto& overlayImage : overlayImages)
+		{
 			vkDestroyImageView(device, overlayImage.imageView, nullptr);
 			vkDestroyImage(device, overlayImage.image, nullptr);
 			vkFreeMemory(device, overlayImage.memory, nullptr);
@@ -452,10 +432,11 @@ void Overlay::ComputeOverlayScaleAndOffset(VkViewport& _viewport, VkRect2D& _sci
 Overlay::Overlay(unsigned int _width, unsigned int _height,
 	GW::SYSTEM::GWindow _window, GW::GRAPHICS::GVulkanSurface _surface,
 	unsigned int _presentStyle) : width(_width), height(_height),
-		windowHandle(_window), surfaceHandle(_surface), presentStyle(_presentStyle)
+	windowHandle(_window), surfaceHandle(_surface), presentStyle(_presentStyle)
 {
 	// validate the present style flags
-	if (!ValidatePresentFlags()) {
+	if (!ValidatePresentFlags())
+	{
 		throw std::runtime_error("Invalid present style flags");
 	}
 
@@ -477,7 +458,7 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 	// create the overlay images
 	unsigned int maxFrames = 0;
 	surfaceHandle.GetSwapchainImageCount(maxFrames);
-	
+
 	//// create the vertex and fragment shaders
 	// // saving this approach for when the shaders are pre-compiled as SPV headers
 	//{
@@ -500,7 +481,7 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 	//		vkCreateShaderModule(device, &createInfo, &fragmentShader);
 	//	}
 	//}
-	
+
 	// create the sampler
 	{
 		VkSamplerCreateInfo samplerInfo = {};
@@ -521,7 +502,8 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 		samplerInfo.minLod = 0.0f;
 		samplerInfo.maxLod = 0.0f;
 		// switch sampler to linear interpolation if requested
-		if (presentStyle & GW::GRAPHICS::GRasterUpdateFlags::INTERPOLATE_BILINEAR) {
+		if (presentStyle & GW::GRAPHICS::GRasterUpdateFlags::INTERPOLATE_BILINEAR)
+		{
 			samplerInfo.magFilter = VK_FILTER_LINEAR;
 			samplerInfo.minFilter = VK_FILTER_LINEAR;
 			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -585,7 +567,7 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 		shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 		shaderStages[1].module = fragmentShader;
 		shaderStages[1].pName = "main";
-		
+
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -640,7 +622,7 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 		depthStencil.minDepthBounds = 0.0f;
 		depthStencil.maxDepthBounds = 1.0f;
 		depthStencil.stencilTestEnable = VK_FALSE;
-		
+
 		VkPipelineMultisampleStateCreateInfo multisampling = {};
 		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		multisampling.sampleShadingEnable = VK_FALSE;
@@ -694,7 +676,8 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 
 	// allocate one overlay image for each swap chain image and link to descriptor set
 	overlayImages.resize(maxFrames);
-	for (auto& overlayImage : overlayImages) {
+	for (auto& overlayImage : overlayImages)
+	{
 		overlayImage.lastUpdate = 0;
 		// allocate one BGRA image for each overlay image
 		VkExtent3D tempExtent = { _width, _height, 1 };
@@ -758,19 +741,22 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 	}
 
 	// allocate CPU staging buffer
-	GvkHelper::create_buffer(physicalDevice, device, _width* _height * 4,
+	GvkHelper::create_buffer(physicalDevice, device, _width * _height * 4,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		&stagingBuffer, &stagingBufferMemory);
 
 	// GVulkanSurface will inform us when to release any allocated resources
-	shutdown.Create([&](const GW::GEvent& g) {
-		GW::GRAPHICS::GVulkanSurface::Events event;
-		if (+g.Read(event)) {
-			if (event == GW::GRAPHICS::GVulkanSurface::Events::RELEASE_RESOURCES) {
-				Cleanup(); // unlike D3D we must be careful about destroy timing
+	shutdown.Create([&](const GW::GEvent& g)
+		{
+			GW::GRAPHICS::GVulkanSurface::Events event;
+			if (+g.Read(event))
+			{
+				if (event == GW::GRAPHICS::GVulkanSurface::Events::RELEASE_RESOURCES)
+				{
+					Cleanup(); // unlike D3D we must be careful about destroy timing
+				}
 			}
-		}
-	});
+		});
 	surfaceHandle.Register(shutdown);
 }
 
@@ -778,28 +764,31 @@ Overlay::Overlay(unsigned int _width, unsigned int _height,
 bool Overlay::LockForUpdate(unsigned int _pixelCount, unsigned int** _outARGBPixels)
 {
 	// ensure pixel count is correct
-	if (_pixelCount != width * height) {
+	if (_pixelCount != width * height)
+	{
 		return false;
 	}
 	// lock for synchronous writes
 	lock.LockSyncWrite();
 
 	// if we have shutdown, we cannot update the overlay
-	if (shutdown == nullptr) {
+	if (shutdown == nullptr)
+	{
 		lock.UnlockSyncWrite();
 		return false;
 	}
 
 	// continue to update the staging buffer
-	vkMapMemory(device, stagingBufferMemory, 0, 
+	vkMapMemory(device, stagingBufferMemory, 0,
 		_pixelCount << 2, 0, reinterpret_cast<void**>(_outARGBPixels));
-	
+
 	return true;
 }
 
 bool Overlay::Unlock()
 {
-	if (shutdown == nullptr) {
+	if (shutdown == nullptr)
+	{
 		lock.UnlockSyncWrite();
 		return false;
 	}
@@ -817,7 +806,8 @@ bool Overlay::Unlock()
 // transfer implementation
 bool Overlay::TransferOverlay()
 {
-	if (shutdown == nullptr) {
+	if (shutdown == nullptr)
+	{
 		return false;
 	}
 	// with the staging buffer updated, we can now copy the data to the overlay image
@@ -827,7 +817,8 @@ bool Overlay::TransferOverlay()
 	OverlayImage& overlayImage = overlayImages[currentImageIndex];
 
 	// only update the overlay image if it has changed
-	if (overlayImage.lastUpdate == overlayUpdateCount) {
+	if (overlayImage.lastUpdate == overlayUpdateCount)
+	{
 		return true;
 	}
 
@@ -879,14 +870,14 @@ bool Overlay::TransferOverlay()
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &transfer_buffer;
-	
+
 	// force a CPU sync until staging buffer is transferred
 	lock.LockAsyncRead();
 
-		//Submit the command buffer to the graphics queue
-		vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-		//Wait for the queue to finish
-		vkQueueWaitIdle(graphicsQueue); // switch for maxFrame pre-computed command buffers
+	//Submit the command buffer to the graphics queue
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	//Wait for the queue to finish
+	vkQueueWaitIdle(graphicsQueue); // switch for maxFrame pre-computed command buffers
 
 	// release the CPU sync
 	lock.UnlockAsyncRead();
@@ -918,7 +909,7 @@ bool Overlay::RenderOverlay()
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 		// bind the descriptor set
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			pipelineLayout, 0, 1, &overlayImage.descriptorSet, 0, nullptr);
 
 		// calculate the UV offset and scale based on presentation style
@@ -929,7 +920,7 @@ bool Overlay::RenderOverlay()
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 		// push the constants
-		vkCmdPushConstants(commandBuffer, pipelineLayout, 
+		vkCmdPushConstants(commandBuffer, pipelineLayout,
 			VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(OverlayConstants), &overlayConstants);
 
 		// draw the overlay

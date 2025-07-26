@@ -4,6 +4,7 @@
 #include "../GAME/GameComponents.h"
 #include <random>
 #include "../APP/Window.hpp"
+#include "../AI/SpawnHelpers.h"
 
 namespace UTIL
 {
@@ -37,6 +38,7 @@ namespace UTIL
 	{
 		registry.emplace<DRAW::MeshCollection>(entity);
 		registry.emplace<GAME::Collidable>(entity);
+		registry.emplace<GAME::DynamicObject>(entity);
 
 		DRAW::ModelManager& modelManager = registry.ctx().get<DRAW::ModelManager>();
 		std::map<std::string, DRAW::MeshCollection>::iterator it = modelManager.models.find(model);
@@ -70,10 +72,84 @@ namespace UTIL
 		const GW::MATH::GOBBF& localBox = it->second.obb;
 		registry.emplace<DRAW::OBB>(entity, DRAW::OBB{ UTIL::BuildOBB(localBox, T) });
 	}
+	void CreateDynamicScene(entt::registry& registry)
+	{
+		entt::entity player = registry.create();
+
+		registry.emplace<GAME::Player>(player);
+
+		auto& config = registry.ctx().get<UTIL::Config>().gameConfig;
+		std::string playerModel = (*config).at("Player").at("model").as<std::string>();
+		unsigned playerHealth = (*config).at("Player").at("hitpoints").as<unsigned>();
+
+		// Move enemy to top of the screen to prepare for ship model
+		GAME::Transform playerTransform{};
+
+		GW::MATH::GMATRIXF identity;
+		GW::MATH::GMatrix::IdentityF(identity);
+
+		// Put player below enemy to start
+		playerTransform.matrix = identity;
+		playerTransform.matrix.row4.z = -20.0f;
+
+		// Initilize player direction to face forward
+		float mouseX, mouseY;
+		auto winView = registry.view<APP::Window>();
+		UTIL::Input input;
+		input.immediateInput.GetMousePosition(mouseX, mouseY);
+		const APP::Window& window = winView.get<APP::Window>(*winView.begin());
+
+		GW::MATH::GVECTORF playerPosition = playerTransform.matrix.row4;
+		float centeredMouseX = mouseX - (window.width / 2.0f);
+		float centeredMouseY = mouseY - (window.height / 2.0f);
+
+		// Calculate target position in world space
+		GW::MATH::GVECTORF targetPosition = {
+			playerPosition.x + centeredMouseX,
+			0.0f,
+			playerPosition.z - centeredMouseY,
+			0.0f
+		};
+
+		// Instantly rotate to face the mouse
+		UTIL::RotateTowards(playerTransform, targetPosition, FLT_MAX);
+
+		registry.emplace<GAME::Health>(player, GAME::Health{ playerHealth, playerHealth });
+		registry.emplace<GAME::Transform>(player, playerTransform);
+		registry.emplace<GAME::Bounded>(player);
+		registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
+
+		UTIL::CreateDynamicObjects(registry, player, playerModel);
+	}
+	void ClearScene(entt::registry& registry)
+	{
+		auto& objects = registry.view<GAME::DynamicObject>();
+
+		for (entt::entity ent : objects)
+		{
+			registry.emplace_or_replace<GAME::Destroy>(ent);
+			for (auto& mesh : registry.get<DRAW::MeshCollection>(ent).entities)
+				registry.emplace_or_replace<GAME::Destroy>(mesh);
+		}
+	}
+	void RestartScene(entt::registry& registry)
+	{
+		CreateDynamicScene(registry);
+
+		registry.get<GAME::Score>(registry.view<GAME::StateManager>().front()).score = 0;
+		registry.get<AI::BossWaves>(registry.view<AI::AIDirector>().front()).waveCount = 0;
+
+		AI::SpawnBoss(registry, "EnemyBoss_Station");
+
+		registry.remove<GAME::GameOver>(registry.view<GAME::GameManager>().front());
+	}
 	GW::MATH::GVECTORF RandomPointInWindowXZ(entt::registry& registry, float marginOffset)
 	{
 		using namespace GW::MATH;
 		auto wView = registry.view<APP::Window>();
+
+		if (wView.empty()) return GVECTORF{0,0,0,0};
+
 		const auto& window = wView.get<APP::Window>(*wView.begin());
 
 		float halfWidth = static_cast<float>(window.width) / marginOffset;

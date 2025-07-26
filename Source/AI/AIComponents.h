@@ -193,5 +193,9 @@ namespace AI
 		bool enabled = true;
 	};;
 
+	struct BossWaves
+	{
+		unsigned waveCount;
+	};
 }
 #endif

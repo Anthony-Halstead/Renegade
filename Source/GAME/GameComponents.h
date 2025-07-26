@@ -12,6 +12,7 @@ namespace GAME
 	struct Enemy {};
 	struct Bullet { float lifetime = 5.0f; };
 	struct Collidable {};
+	struct DynamicObject {};
 	struct Obstacle {};
 	struct Destroy {};
 	struct Hit {};

@@ -42,8 +42,9 @@ void GAME::UpgradeWeapon(entt::registry& reg, entt::entity player)
     pw->model = cfg.meshName[idx];
 
     if (pw->model.empty()) {
-        std::cout << "[Weapon] Upgraded to tier " << idx
-            << " (no mesh attached yet, rate=" << pw->rate << ")\n";
+        /// Debug
+        // std::cout << "[Weapon] Upgraded to tier " << idx
+           // << " (no mesh attached yet, rate=" << pw->rate << ")\n";
         return; 
     }
 

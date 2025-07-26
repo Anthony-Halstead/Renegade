@@ -743,9 +743,10 @@ namespace AI
 		KamikazeSpawnBehavior(registry, entity, dt);
 	}
 
-	void Initialize(entt::registry& registry)
+	void Initialize(entt::registry& registry, entt::entity entity)
 	{
 		SpawnBoss(registry, "EnemyBoss_Station");
+		registry.emplace<BossWaves>(entity);
 	}
 
 	void UpdateFormation(entt::registry& r)
@@ -1205,8 +1206,6 @@ namespace AI
 
 	void Update(entt::registry& registry, entt::entity entity)
 	{
-		static unsigned int bossWaveCount = 0;
-
 		if (!registry.any_of<GAME::GameOver>(registry.view<GAME::GameManager>().front()))
 		{
 			UpdateEnemies(registry, entity);
@@ -1217,7 +1216,7 @@ namespace AI
 			UpdateLazerAttack(registry);
 			UpdateFlockGoal(registry);
 			UpdateFlock(registry);
-			UpdateBossSpawn(registry, entity, bossWaveCount);
+			UpdateBossSpawn(registry, entity, registry.get<BossWaves>(entity).waveCount);
 			UpdateMineDrones(registry);
 			UpdateSpinningDrones(registry);
 			UpdateFormation(registry);

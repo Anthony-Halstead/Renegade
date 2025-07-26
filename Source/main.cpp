@@ -179,62 +179,17 @@ void GraphicsBehavior(entt::registry& registry)
 // It will be responsible for updating the VulkanInstances and any other gameplay components
 void GameplayBehavior(entt::registry& registry)
 {
-	entt::entity player = registry.create();
 	entt::entity gameManager = registry.create();
 	entt::entity stateManager = registry.create();
 
 	registry.emplace<GAME::GameManager>(gameManager);
 	registry.emplace<GAME::StateManager>(stateManager);
-	registry.emplace<GAME::Player>(player, 0, 5);
 
-	std::shared_ptr<const GameConfig> config = registry.ctx().get<UTIL::Config>().gameConfig;
-	std::string playerModel = (*config).at("Player").at("model").as<std::string>();
-	unsigned playerHealth = (*config).at("Player").at("hitpoints").as<unsigned>();
+	UTIL::CreateDynamicScene(registry);
 
-	// Move enemy to top of the screen to prepare for ship model
-	GAME::Transform playerTransform{};
-
-	GW::MATH::GMATRIXF identity;
-	GW::MATH::GMatrix::IdentityF(identity);
-
-	// Put player below enemy to start
-	playerTransform.matrix = identity;
-	playerTransform.matrix.row4.z = -20.0f;
-
-	// Initilize player direction to face forward
-	float mouseX, mouseY;
-	auto winView = registry.view<APP::Window>();
-	UTIL::Input input;
-	input.immediateInput.GetMousePosition(mouseX, mouseY);
-	const APP::Window& window = winView.get<APP::Window>(*winView.begin());
-
-	GW::MATH::GVECTORF playerPosition = playerTransform.matrix.row4;
-	float centeredMouseX = mouseX - (window.width / 2.0f);
-	float centeredMouseY = mouseY - (window.height / 2.0f);
-
-	// Calculate target position in world space
-	GW::MATH::GVECTORF targetPosition = {
-		playerPosition.x + centeredMouseX,
-		0.0f,
-		playerPosition.z - centeredMouseY,
-		0.0f
-	};
-
-	// Instantly rotate to face the mouse
-	UTIL::RotateTowards(playerTransform, targetPosition, FLT_MAX);
-
-	registry.emplace<GAME::Health>(player, GAME::Health{ playerHealth, playerHealth } );
-	registry.emplace<GAME::Transform>(player, playerTransform);
-
-	registry.emplace<GAME::Bounded>(player);
 	registry.emplace<GAME::Gaming>(gameManager);
-
-	registry.emplace<GAME::PriorFrameData>(player, GAME::PriorFrameData{ playerHealth });
 	registry.emplace<GAME::Score>(stateManager, GAME::Score{ 0, 0 });
 	registry.patch<GAME::StateManager>(stateManager);
-
-
-	UTIL::CreateDynamicObjects(registry, player, playerModel);
 }
 
 // This function will be called by the main loop to update the main loop
@@ -266,9 +221,11 @@ void MainLoopBehavior(entt::registry& registry)
 		winCloseFound = false;
 
 		if (!registry.any_of<UI::TitleScreen>(registry.view<UI::UIManager>().front()) && !registry.any_of<UI::PauseScreen>(registry.view<UI::UIManager>().front()))
+		{
 			registry.patch<GAME::GameManager>(registry.view<GAME::GameManager>().front());
+			registry.patch<AI::AIDirector>(registry.view<AI::AIDirector>().front());
+		}
 
-		registry.patch<AI::AIDirector>(registry.view<AI::AIDirector>().front());
 		registry.patch<GAME::StateManager>(registry.view<GAME::StateManager>().front());
 		registry.patch<AUDIO::MusicHandle>(registry.view<AUDIO::MusicHandle>().front());
 		registry.patch<GAME::PickupManager>(registry.view<GAME::PickupManager>().front());

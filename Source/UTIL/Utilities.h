@@ -33,6 +33,9 @@ namespace UTIL
 	void CreateVelocity(entt::registry& registry, entt::entity& entity, GW::MATH::GVECTORF& vec, const float& speed);
 	void CreateTransform(entt::registry& registry, entt::entity& entity, GW::MATH::GMATRIXF matrix = GW::MATH::GIdentityMatrixF);
 	void CreateDynamicObjects(entt::registry& registry, entt::entity& entity, const std::string& model);
+	void CreateDynamicScene(entt::registry& registry);
+	void ClearScene(entt::registry& registry);
+	void RestartScene(entt::registry& registry);
 
 	/// Creates a normalized vector pointing in a random direction on the X/Z plane
 	GW::MATH::GVECTORF GetRandomVelocityVector();
